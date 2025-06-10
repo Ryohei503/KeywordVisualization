@@ -55,6 +55,10 @@ if __name__ == "__main__":
     def generate_graph():
         """Generate and save the word frequency graph."""
         try:
+            font_path = load_japanese_font()
+            if not font_path:
+                messagebox.showerror("エラー", "フォントの読み込みに失敗しました。")
+                return
             df = pd.read_csv(selected_csv_file)
 
             # Sort by count
@@ -84,6 +88,9 @@ if __name__ == "__main__":
             plt.savefig(output_path, bbox_inches='tight', dpi=300)
             plt.close()
             messagebox.showinfo("完了", f"グラフを保存しました:\n{output_path}")
+
+            # Open the saved graph image
+            os.startfile(output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"エラーが発生しました:\n{str(e)}")
 
@@ -119,7 +126,10 @@ if __name__ == "__main__":
             plt.tight_layout(pad=0)
             plt.savefig(output_path, bbox_inches='tight', dpi=300)
             plt.close()
-            messagebox.showinfo("完了", f"ワードクラウド画像を保存しました:\n{output_path}")
+            messagebox.showinfo("完了", f"Word Cloudを保存しました:\n{output_path}")
+
+            # Open the saved word cloud image
+            os.startfile(output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"エラーが発生しました:\n{str(e)}")
 

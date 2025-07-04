@@ -68,25 +68,25 @@ if __name__ == "__main__":
                 return
             df = pd.read_excel(selected_excel_file, sheet_name=selected_sheet.get())
 
-            df_sorted = df.sort_values(by="count", ascending=False)
+            df_sorted = df.sort_values(by="count", ascending=True)
             num_words = len(df_sorted)
             height_per_word = 0.25
             base_height = 4
             fig_height = max(base_height, num_words * height_per_word)
 
-            plt.figure(figsize=(12, fig_height))
-            plt.barh(df_sorted["word"], df_sorted["count"], color="skyblue")
-            plt.xlabel("Count", fontsize=14)
-            plt.ylabel("Word", fontsize=14)
-            plt.title(f"Word Frequency Graph - {selected_sheet.get()}", fontsize=16)
-            plt.xticks(fontsize=12)
-            plt.yticks(fontsize=12)
-            plt.grid(axis="x", linestyle="--", alpha=0.6)
-            plt.gca().invert_yaxis()
-
             base_path = os.path.splitext(selected_excel_file)[0]
             sheet_name = selected_sheet.get().replace(" ", "_")  # Replace spaces with underscores for file name
             output_path = f"{base_path}_{sheet_name}_graph.png"
+            fig, ax = plt.subplots(figsize=(12, fig_height), constrained_layout=True)
+            bars = ax.barh(df_sorted["word"], df_sorted["count"], color="skyblue")
+            ax.invert_yaxis()
+            ax.set_xlabel("Count", fontsize=14)
+            ax.set_ylabel("Word", fontsize=14)
+            ax.set_title(f"Word Frequency Graph - {selected_sheet.get()}", fontsize=16)
+            ax.set_ylim(-0.5, len(df_sorted) - 0.5)
+            ax.tick_params(axis='x', labelsize=12)
+            ax.tick_params(axis='y', labelsize=12)
+            ax.grid(axis="x", linestyle="--", alpha=0.6)
             plt.savefig(output_path, bbox_inches='tight', dpi=300)
             plt.close()
             messagebox.showinfo("完了", f"グラフを保存しました:\n{output_path}")

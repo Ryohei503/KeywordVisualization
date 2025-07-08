@@ -20,21 +20,22 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from sklearn.metrics import accuracy_score
-import warnings
 import nltk
 
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
 
 for resource in ['punkt', 'wordnet', 'stopwords']:
     try:
         nltk.data.find(f'tokenizers/{resource}' if resource == 'punkt' else f'corpora/{resource}')
     except LookupError:
-        nltk.download(resource)
+        nltk.download(resource, quiet=True)
 
 # Download NLTK resources (run once)
 import tkinter as tk
 from tkinter import filedialog
 import os
+from sklearn.metrics import accuracy_score
+import csv
 
 def categorize_csv_to_excel(threshold):
     """
@@ -44,6 +45,7 @@ def categorize_csv_to_excel(threshold):
     The output Excel is saved in the same folder as the original file, named 'originalname_categorized.xlsx'.
     Adds a column with the model's confidence for each prediction.
     Adds a column with 1 if the prediction is correct (if true Category exists), else 0.
+    Returns the path of the saved Excel file.
     """
 
     # Open file dialog to select CSV
@@ -55,15 +57,21 @@ def categorize_csv_to_excel(threshold):
     )
     if not input_csv:
         print("No file selected.")
-        return
+        return None
 
     # Try reading with header first
     try:
-        df = pd.read_csv(input_csv, encoding='utf-8-sig')
-        if 'Summary' in df.columns:
+        # Open the CSV file and read the first line
+        with open(input_csv, 'r', encoding='utf-8-sig') as file:
+            reader = csv.reader(file)
+            first_row = next(reader)
+            num_columns = len(first_row)
+        if num_columns == 2:
+            df = pd.read_csv(input_csv, encoding='utf-8-sig')
             has_category = 'Category' in df.columns
         else:
             # No header, use first column as Summary
+            df = pd.read_csv(input_csv, encoding='utf-8-sig', header=None)
             df.columns = ['Summary'] + list(df.columns[1:])
             df = df[['Summary']]
             has_category = False
@@ -118,12 +126,11 @@ def categorize_csv_to_excel(threshold):
 
     # If the CSV has a true Category column, print accuracy
     if has_category:
-        from sklearn.metrics import accuracy_score
         accuracy = accuracy_score(df['Category'], df['Predicted_Category'])
         print(f"Categorization Accuracy: {accuracy:.2f}")
 
     # Desired sheet order
-    ordered_categories = ["UI (Web-based)", "API", "Database", "Others"]
+    ordered_categories = ["UI", "API", "Database", "Others"]
 
     # Prepare output path
     base = os.path.splitext(input_csv)[0]
@@ -140,7 +147,9 @@ def categorize_csv_to_excel(threshold):
                     df_cat[['Summary', 'Confidence', 'Correct']].to_excel(writer, sheet_name=sheet_name, index=False, header=False)
                 else:
                     df_cat[['Summary', 'Confidence']].to_excel(writer, sheet_name=sheet_name, index=False, header=False)
+    
     print(f"Excel file saved to {output_excel}")
+    return output_excel
 
 # Enhanced text preprocessing
 class TextPreprocessor:
@@ -194,7 +203,7 @@ def load_data(filepath):
     return df
 
 # Load data
-df = load_data("sample_data1.csv")
+df = load_data("sample_category.csv")
 X = df[['processed_summary', 'summary_length', 'char_count', 'digit_count']]
 y = df['Category']
 
@@ -306,7 +315,7 @@ def fallback_predict(summary):
     
     # Return category with most matches
     matches = {
-        "UI (Web-based)": ui_matches,
+        "UI": ui_matches,
         "API": api_matches,
         "Database": db_matches
     }
@@ -346,4 +355,56 @@ def fallback_predict(summary):
 #         return fallback_predict(summary)
 
 # Call the categorization function
-categorize_csv_to_excel(0.8)
+
+def generate_category_pie_chart(excel_file):
+    """
+    Generates a pie chart showing the proportion of each category based on the number of rows in each category.
+    """
+    # Read the Excel file
+    df = pd.read_excel(excel_file, sheet_name=None, header=None)
+
+    # Count occurrences of each category based on the sheet names
+    category_counts = {sheet_name: len(sheet_data) for sheet_name, sheet_data in df.items() if not sheet_data.empty}
+
+    # Create pie chart using seaborn
+    labels = list(category_counts.keys())[::-1]  # Reverse the order of categories
+    sizes = list(category_counts.values())[::-1]  # Reverse the order of sizes
+
+    # Create a figure and axis
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    # Create the pie chart with the specified style
+    patches, texts, pcts = ax.pie(
+        sizes, labels=labels, autopct='%.1f%%',
+        wedgeprops={'linewidth': 3.0, 'edgecolor': 'white'},
+        textprops={'size': 'x-large'},
+        startangle=90
+    )
+
+    # Set the text label colors to match the wedge face colors
+    for i, patch in enumerate(patches):
+        texts[i].set_color(patch.get_facecolor())
+
+    # Set properties for percentage text
+    plt.setp(pcts, color='white')
+    plt.setp(texts, fontweight=600)
+
+    # Set the title
+    ax.set_title('Defect Types', fontsize=18)
+
+    # Adjust layout and save the chart
+    plt.tight_layout()
+    output_pie_chart = f"{os.path.splitext(excel_file)[0]}_pie_chart.png"
+    plt.savefig(output_pie_chart)
+    plt.close()
+    print(f"Pie chart saved as '{output_pie_chart}'.")
+
+# Call the categorization function
+output_excel = categorize_csv_to_excel(0.8)
+
+# Validate the output
+if output_excel is None or not os.path.exists(output_excel):
+    raise ValueError(f"Invalid file path returned by categorize_csv_to_excel: {output_excel}")
+
+# Generate pie chart after categorization
+generate_category_pie_chart(output_excel)

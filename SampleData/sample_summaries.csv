@@ -1,0 +1,21 @@
+Summary
+Submit button overlaps with footer text on the homepage.
+Dropdown menu does not expand correctly on Safari browser.
+Login page takes too long to load after input.
+Font size is inconsistent between desktop and mobile views.
+Navigation bar disappears when scrolling down.
+GET /user endpoint returns 500 error under high load.
+API returns null for valid user token.
+Response schema is missing the 'status' field in JSON output.
+POST /login does not handle invalid credentials properly.
+Rate limiting not applied to the /search endpoint.
+Query takes 10 seconds to return 50 rows from user table.
+New users are not being saved due to constraint violation.
+SQL join returns duplicate rows for valid inputs.
+Database migration script failed due to syntax error.
+Stored procedure returns incorrect results for latest orders.
+Environment setup fails due to missing dependencies.
+Test script crashes when run with Python 3.11.
+Performance report generation is inconsistent across machines.
+Email alerts are not being sent from staging environment.
+Build pipeline fails intermittently on Jenkins.

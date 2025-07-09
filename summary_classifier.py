@@ -39,7 +39,7 @@ import csv
 
 def categorize_csv_to_excel(threshold):
     """
-    Prompts the user to select a CSV file containing only a 'Summary' column (no headers required),
+    Prompts the user to select a CSV file containing a 'Summary' column,
     predicts categories, and writes an Excel file with separate sheets for each category.
     Each sheet contains only the summary (no header).
     The output Excel is saved in the same folder as the original file, named 'originalname_categorized.xlsx'.
@@ -59,23 +59,11 @@ def categorize_csv_to_excel(threshold):
         print("No file selected.")
         return None
 
-    # Try reading with header first
-    try:
-        # Open the CSV file and read the first line
-        with open(input_csv, 'r', encoding='utf-8-sig') as file:
-            reader = csv.reader(file)
-            first_row = next(reader)  # Read the header row
-        if 'Category' in first_row: # Check if 'Category' exists in the header
-            df = pd.read_csv(input_csv, encoding='utf-8-sig')
-            has_category = 'Category' in df.columns
-        else:
-            # No header, use first column as Summary
-            df = pd.read_csv(input_csv, encoding='utf-8-sig', header=None)
-            df.columns = ['Summary'] + list(df.columns[1:])
-            df = df[['Summary']]
-            has_category = False
-    except Exception:
-        df = pd.read_csv(input_csv, header=None, names=['Summary'], encoding='utf-8-sig')
+    # Check if the selected file has a header called 'Category'
+    df = pd.read_csv(input_csv, encoding='utf-8-sig')
+    if 'Category' in df.columns:
+        has_category = True
+    else:
         has_category = False
 
     preprocessor = TextPreprocessor()

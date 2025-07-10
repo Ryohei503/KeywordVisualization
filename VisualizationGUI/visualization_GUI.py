@@ -80,6 +80,10 @@ def generate_graph():
 
         # Load and sort data
         df = pd.read_excel(selected_excel_file, sheet_name=selected_sheet.get())
+        # Ensure the required columns exist
+        if "word" not in df.columns or "count" not in df.columns:
+            messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
+            return
         df_sorted = df.sort_values(by="count", ascending=False).reset_index(drop=True)
 
         # Create index list for slicing  
@@ -144,6 +148,10 @@ def generate_wordcloud():
             return
 
         df = pd.read_excel(selected_excel_file, sheet_name=selected_sheet.get())
+        # Ensure the required columns exist
+        if "word" not in df.columns or "count" not in df.columns:
+            messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
+            return
         freq_dict = pd.Series(df["count"].values, index=df["word"]).to_dict()
 
         wc = WordCloud(
@@ -171,8 +179,14 @@ def generate_wordcloud():
         messagebox.showerror("Error", f"There was an error:\n{str(e)}")
 
 
-def generate_heatmap():
+def generate_bubble_chart():
     try:
+        import circlify
+        font_path = load_japanese_font()
+        if not font_path:
+            messagebox.showerror("Error", "Failed to read fonts")
+            return
+
         # Load the data from the selected Excel file
         df = pd.read_excel(selected_excel_file, sheet_name=selected_sheet.get())
 
@@ -181,36 +195,57 @@ def generate_heatmap():
             messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
             return
 
-        # Create a pivot table for the heatmap
-        heatmap_data = pd.DataFrame({
-            "Keyword": df["word"],
-            "Frequency": df["count"]
-        })
+        # Prepare data
+        df_words = df.sort_values(by="count", ascending=False).reset_index(drop=True)
+        labels = list(df_words['word'])
+        counts = list(df_words['count'])
 
-        # Sort by frequency for better visualization
-        heatmap_data = heatmap_data.sort_values(by="Frequency", ascending=False)
+        # Reverse for display order (largest at bottom)
+        labels.reverse()
+        counts.reverse()
 
-        # Create a heatmap
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(
-            heatmap_data.set_index("Keyword").T,
-            annot=True,
-            fmt="d",
-            cmap="YlGnBu",
-            cbar=True
+        # Generate circles
+        circles = circlify.circlify(
+            counts,
+            show_enclosure=False,
+            target_enclosure=circlify.Circle(x=0, y=0, r=1)
         )
 
-        # Display the heatmap
-        plt.title("Keyword Frequency Heatmap")
-        plt.xlabel("Keywords")
-        plt.ylabel("Frequency")
+        # Get color dictionary
+        max_count = max(counts)
+        color_dict = get_colordict('summer', max_count, min(counts))
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(9, 9), facecolor='white')
+        ax.axis('off')
+        lim = max(
+            max(abs(circle.x) + circle.r, abs(circle.y) + circle.r)
+            for circle in circles
+        )
+        plt.xlim(-lim, lim)
+        plt.ylim(-lim, lim)
+
+        # Draw circles and annotate
+        for circle, label, count in zip(circles, labels, counts):
+            x, y, r = circle.x, circle.y, circle.r
+            ax.add_patch(plt.Circle((x, y), r, alpha=0.9, color=color_dict.get(count)))
+            plt.annotate(f"{label}\n{count}", (x, y), size=12, va='center', ha='center')
+
+        # Save and display the bubble chart
+        base_path = os.path.splitext(selected_excel_file)[0]
+        sheet_name = selected_sheet.get().replace(" ", "_")  # Replace spaces with underscores for file name
+        output_path = f"{base_path}_{sheet_name}_bubblechart.png"
+        plt.title("Keyword Frequency Bubble Chart")
         plt.tight_layout()
-        plt.show()
-
+        plt.savefig(output_path, bbox_inches='tight', dpi=300)
+        plt.close()
+        messagebox.showinfo("Completed", f"Saved a bubble chart:\n{output_path}")
+        os.startfile(output_path)
+        
     except Exception as e:
-        messagebox.showerror("Error", f"There was an error when generating a heatmap:\n{str(e)}")
+        messagebox.showerror("Error", f"There was an error when generating a bubble chart:\n{str(e)}")
 
-    
+
 # GUI Buttons
 btn_select_file = tk.Button(root, text="Select Excel File", command=select_excel_file, width=20, height=1)
 btn_select_file.pack(anchor='nw')
@@ -221,8 +256,8 @@ btn_graph.pack(pady=20)
 btn_wordcloud = tk.Button(root, text="Generate Word Cloud", command=generate_wordcloud, width=20, height=2)
 btn_wordcloud.pack(pady=20)
 
-heatmap_button = tk.Button(root, text="Generate Heatmap", command=generate_heatmap, width=20, height=2)
-heatmap_button.pack(pady=20)
+btn_bubble = tk.Button(root, text="Generate Bubble Chart", command=generate_bubble_chart, width=20, height=2)
+btn_bubble.pack(pady=20)
 
 root.mainloop()
 

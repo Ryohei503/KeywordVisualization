@@ -41,7 +41,6 @@ def categorize_csv_to_excel(threshold):
     """
     Prompts the user to select a CSV file containing a 'Summary' column,
     predicts categories, and writes an Excel file with separate sheets for each category.
-    Each sheet contains only the summary (no header).
     The output Excel is saved in the same folder as the original file, named 'originalname_categorized.xlsx'.
     Adds a column with the model's confidence for each prediction.
     Adds a column with 1 if the prediction is correct (if true Category exists), else 0.
@@ -59,8 +58,14 @@ def categorize_csv_to_excel(threshold):
         print("No file selected.")
         return None
 
-    # Check if the selected file has a header called 'Category'
+    # Read the CSV file
     df = pd.read_csv(input_csv, encoding='utf-8-sig')
+    if 'Summary' not in df.columns:
+        from tkinter import messagebox
+        messagebox.showerror("Error", "The selected CSV file does not contain a 'Summary' column.")
+        return None
+
+    # Check if the selected file has a 'Category' column
     if 'Category' in df.columns:
         has_category = True
     else:
@@ -370,11 +375,11 @@ def generate_category_pie_chart(excel_file):
         texts[i].set_color(patch.get_facecolor())
 
     # Set properties for percentage text
-    plt.setp(pcts, color='white')
+    plt.setp(pcts, color='black')
     plt.setp(texts, fontweight=600)
 
     # Set the title
-    ax.set_title('Defect Types', fontsize=18)
+    ax.set_title('Defect Categories', fontsize=18)
 
     # Adjust layout and save the chart
     plt.tight_layout()

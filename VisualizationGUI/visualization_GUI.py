@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
 import os
@@ -43,7 +44,7 @@ def get_colordict(cmap_name, max_value, min_value=1):
 
 # GUI setup
 root = tk.Tk()
-root.title("Defect Summary Analysis Tool")
+root.title("Defect Report Analysis Tool")
 root.geometry("400x400")
 
 selected_excel_file = None
@@ -66,7 +67,7 @@ def select_excel_file():
         if sheet_menu:
             sheet_menu.destroy()
         sheet_menu = tk.OptionMenu(root, selected_sheet, *sheet_names)
-        sheet_menu.pack(anchor='nw', padx=10, pady=(50, 10))
+        sheet_menu.pack(anchor='nw', padx=10, pady=(20, 10))  # Adjusted pady for higher placement
     except Exception as e:
         messagebox.showerror("Error", f"Failed to read sheets:\n{str(e)}")
 
@@ -246,18 +247,31 @@ def generate_bubble_chart():
         messagebox.showerror("Error", f"There was an error when generating a bubble chart:\n{str(e)}")
 
 
+# Styling
+style = ttk.Style()
+style.theme_use("clam")  # Use a modern theme
+style.configure("TButton", font=("Arial", 12), padding=5)
+style.configure("TLabel", font=("Arial", 14))
+
+# Frames for better layout
+frame_top = ttk.Frame(root, padding=10)
+frame_top.pack(fill='x', anchor='nw')
+
+frame_buttons = ttk.Frame(root, padding=20)
+frame_buttons.pack(fill='both', expand=True)
+
 # GUI Buttons
-btn_select_file = tk.Button(root, text="Select Excel File", command=select_excel_file, width=20, height=1)
-btn_select_file.pack(anchor='nw')
+btn_select_file = ttk.Button(frame_buttons, text="Select Excel File", command=select_excel_file, width=10)
+btn_select_file.grid(row=0, column=0, padx=5, pady=5, sticky='nw')
 
-btn_graph = tk.Button(root, text="Generate Graph", command=generate_graph, width=20, height=2)
-btn_graph.pack(pady=20)
+btn_graph = ttk.Button(frame_buttons, text="Generate Graph", command=generate_graph, width=20)
+btn_graph.grid(row=1, column=0, padx=10, pady=10)
 
-btn_wordcloud = tk.Button(root, text="Generate Word Cloud", command=generate_wordcloud, width=20, height=2)
-btn_wordcloud.pack(pady=20)
+btn_wordcloud = ttk.Button(frame_buttons, text="Generate Word Cloud", command=generate_wordcloud, width=20)
+btn_wordcloud.grid(row=2, column=0, padx=10, pady=10)
 
-btn_bubble = tk.Button(root, text="Generate Bubble Chart", command=generate_bubble_chart, width=20, height=2)
-btn_bubble.pack(pady=20)
+btn_bubble = ttk.Button(frame_buttons, text="Generate Bubble Chart", command=generate_bubble_chart, width=20)
+btn_bubble.grid(row=3, column=0, padx=10, pady=10)
 
 root.mainloop()
 

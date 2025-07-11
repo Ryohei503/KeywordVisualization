@@ -1,4 +1,8 @@
-from Imports import *
+import pandas as pd
+import re
+from tkinter import filedialog, Tk
+from textblob import TextBlob
+from langdetect import detect, DetectorFactory
 
 def remove_project_names_and_codes(text, project_names):
     # Remove project names with different variations of brackets and spacing
@@ -125,7 +129,7 @@ def process_csv():
     else:
         print("Column 'Summary' not found in the CSV.")
 
-    output_file = 'CleanedOutput.csv'
+    output_file = f"{file_path.rsplit('.', 1)[0]}_cleaned.csv"
     df.to_csv(output_file, encoding="utf-8-sig", index=False)
     print(f"Cleaned data saved to {output_file}")
 

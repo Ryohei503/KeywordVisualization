@@ -45,7 +45,11 @@ def get_colordict(cmap_name, max_value, min_value=1):
 # GUI setup
 root = tk.Tk()
 root.title("Defect Report Analysis Tool")
-root.geometry("400x400")
+root.geometry("600x400")
+frame_top = tk.Frame(root, padx=10, pady=10)
+frame_top.pack(fill='x', anchor='nw')
+frame_buttons = tk.Frame(root, padx=20, pady=20)
+frame_buttons.pack(fill='both', expand=True)
 
 selected_excel_file = None
 selected_sheet = tk.StringVar(root)
@@ -66,8 +70,8 @@ def select_excel_file():
         selected_sheet.set(sheet_names[0])
         if sheet_menu:
             sheet_menu.destroy()
-        sheet_menu = tk.OptionMenu(root, selected_sheet, *sheet_names)
-        sheet_menu.pack(anchor='nw', padx=10, pady=(20, 10))  # Adjusted pady for higher placement
+        sheet_menu = tk.OptionMenu(frame_top, selected_sheet, *sheet_names)  # <-- changed here
+        sheet_menu.pack(anchor='ne', padx=10, pady=(0, 10))  # <-- changed here
     except Exception as e:
         messagebox.showerror("Error", f"Failed to read sheets:\n{str(e)}")
 
@@ -249,29 +253,24 @@ def generate_bubble_chart():
 
 # Styling
 style = ttk.Style()
-style.theme_use("clam")  # Use a modern theme
+style.theme_use("xpnative")
 style.configure("TButton", font=("Arial", 12), padding=5)
-style.configure("TLabel", font=("Arial", 14))
-
-# Frames for better layout
-frame_top = ttk.Frame(root, padding=10)
-frame_top.pack(fill='x', anchor='nw')
-
-frame_buttons = ttk.Frame(root, padding=20)
-frame_buttons.pack(fill='both', expand=True)
+style.configure("Small.TButton", font=("Arial", 10), padding=5)  # Define the smaller style
 
 # GUI Buttons
-btn_select_file = ttk.Button(frame_buttons, text="Select Excel File", command=select_excel_file, width=10)
-btn_select_file.grid(row=0, column=0, padx=5, pady=5, sticky='nw')
+btn_select_file = ttk.Button(frame_top, text="Select Excel File", command=select_excel_file)
+btn_select_file.pack(side='left', padx=(0, 10), pady=5)
+btn_select_file.configure(style="Small.TButton")
 
+# Center the action buttons in frame_buttons
 btn_graph = ttk.Button(frame_buttons, text="Generate Graph", command=generate_graph, width=20)
-btn_graph.grid(row=1, column=0, padx=10, pady=10)
+btn_graph.pack(pady=10)
 
 btn_wordcloud = ttk.Button(frame_buttons, text="Generate Word Cloud", command=generate_wordcloud, width=20)
-btn_wordcloud.grid(row=2, column=0, padx=10, pady=10)
+btn_wordcloud.pack(pady=10)
 
 btn_bubble = ttk.Button(frame_buttons, text="Generate Bubble Chart", command=generate_bubble_chart, width=20)
-btn_bubble.grid(row=3, column=0, padx=10, pady=10)
+btn_bubble.pack(pady=10)
 
 root.mainloop()
 

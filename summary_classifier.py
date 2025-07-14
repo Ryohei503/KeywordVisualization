@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
 from sklearn.utils.class_weight import compute_class_weight
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
@@ -22,8 +22,6 @@ from nltk.corpus import stopwords
 from sklearn.metrics import accuracy_score
 import nltk
 
-# warnings.filterwarnings("ignore")
-
 for resource in ['punkt', 'wordnet', 'stopwords']:
     try:
         nltk.data.find(f'tokenizers/{resource}' if resource == 'punkt' else f'corpora/{resource}')
@@ -35,7 +33,6 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 from sklearn.metrics import accuracy_score
-import csv
 
 def categorize_csv_to_excel(threshold):
     """
@@ -252,18 +249,6 @@ print(f"Cross-Validation F1 Score: {cv_scores.mean():.2f} (+/- {cv_scores.std():
 y_pred = pipeline.predict(X_test)
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=0))
-
-# Confusion Matrix
-labels = sorted(y.unique())
-cm = confusion_matrix(y_test, y_pred, labels=labels)
-plt.figure(figsize=(10, 8))
-sns.heatmap(cm, annot=True, fmt='d', xticklabels=labels, yticklabels=labels)
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.title('Confusion Matrix')
-plt.tight_layout()
-plt.savefig("confusion_matrix_enhanced.png")
-plt.close()
 
 # Save model
 joblib.dump(pipeline, "enhanced_classifier.pkl")

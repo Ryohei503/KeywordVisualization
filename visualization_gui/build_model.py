@@ -10,6 +10,8 @@ import joblib
 # Add tkinter for file dialog
 import tkinter as tk
 from tkinter import filedialog
+from sentence_transformers import SentenceTransformer
+
 
 
 
@@ -47,7 +49,6 @@ if __name__ == "__main__":
     y = df['Category']
 
     # Use SentenceTransformer for multilingual embeddings
-    from sentence_transformers import SentenceTransformer
     model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     X = model.encode(df['Summary'].astype(str).tolist())  # X is a dense numpy array
 

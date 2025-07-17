@@ -92,5 +92,5 @@ if __name__ == "__main__":
     print(classification_report(y_test, y_pred, zero_division=0))
 
     # Save model
-    joblib.dump(pipeline, "enhanced_classifier.pkl")
-    print("Model saved as 'enhanced_classifier.pkl'")
+    joblib.dump(pipeline, "classifier_model.pkl")
+    print("Model saved as 'classifier_model.pkl'")

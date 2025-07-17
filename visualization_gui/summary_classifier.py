@@ -27,7 +27,7 @@ def categorize_summaries():
 
     df.dropna(subset=['Summary'], inplace=True)
 
-    pipeline = joblib.load("enhanced_classifier.pkl")
+    pipeline = joblib.load("classifier_model.pkl")
 
     from sentence_transformers import SentenceTransformer
     st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')

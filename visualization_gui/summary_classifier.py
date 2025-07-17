@@ -7,6 +7,8 @@ import matplotlib
 matplotlib.use('Agg')
 from pie_chart_util import generate_category_pie_chart
 from word_count_util import word_count
+from sentence_transformers import SentenceTransformer
+
 
 
 def categorize_summaries():
@@ -28,8 +30,6 @@ def categorize_summaries():
     df.dropna(subset=['Summary'], inplace=True)
 
     pipeline = joblib.load("classifier_model.pkl")
-
-    from sentence_transformers import SentenceTransformer
     st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     def predict_category(row):
         try:

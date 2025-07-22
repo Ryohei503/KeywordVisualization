@@ -8,7 +8,7 @@ from text_preprocessing import process_text
 def word_count(excel_path):
     xls = pd.ExcelFile(excel_path)
     base_path = os.path.splitext(excel_path)[0]
-    word_count_excel = f"{base_path}_word_count.xlsx"
+    word_count_excel = f"{base_path}_wordcount.xlsx"
     with pd.ExcelWriter(word_count_excel, engine='xlsxwriter') as writer:
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name)

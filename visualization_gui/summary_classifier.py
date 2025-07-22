@@ -65,4 +65,3 @@ output_excel = categorize_summaries()
 if output_excel is None or not os.path.exists(output_excel):
     raise ValueError(f"Invalid file path returned by categorize_excel_to_excel: {output_excel}")
 generate_category_pie_chart(output_excel)
-word_count(output_excel)

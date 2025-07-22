@@ -44,7 +44,7 @@ def categorize_summaries():
     df['Predicted_Category'] = df.apply(predict_category, axis=1)
 
     # Save categorized Excel
-    ordered_categories = ["UI", "API", "Database", "Others"]
+    ordered_categories = ["UI", "API", "DB", "Others"]
     base = os.path.splitext(input_excel)[0]
     output_excel = f"{base}_categorized.xlsx"
 

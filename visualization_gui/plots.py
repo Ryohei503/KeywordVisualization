@@ -27,7 +27,8 @@ def get_colordict(cmap_name, max_value, min_value=1):
     norm = Normalize(vmin=min_value, vmax=max_value)
     return {i: cmap(norm(i)) for i in range(min_value, max_value + 1)}
 
-def generate_graph(df_sorted, n, chunk_size, color_dict, top_n_label, sheet_name, file_name, output_path, sheet_names_global):
+def generate_graph(df_sorted, chunk_size, color_dict, top_n_label, sheet_name, output_path, sheet_names_global):
+    df_sorted.columns = [col.lower() for col in df_sorted.columns]
     num_words = len(df_sorted)
     index_list = [
         [start, min(start + chunk_size, num_words)]
@@ -62,8 +63,8 @@ def generate_graph(df_sorted, n, chunk_size, color_dict, top_n_label, sheet_name
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
 
-def generate_wordcloud(df, n, font_path, wc_top_n_label, output_path):
-    df = df.sort_values(by="count", ascending=False).reset_index(drop=True)
+def generate_wordcloud(df, n, font_path, output_path):
+    df.columns = [col.lower() for col in df.columns]
     df = df.iloc[:n]
     freq_dict = pd.Series(df["count"].values, index=df["word"]).to_dict()
     wc = WordCloud(
@@ -82,9 +83,9 @@ def generate_wordcloud(df, n, font_path, wc_top_n_label, output_path):
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
 
-def generate_bubble_chart(df_words, n, color_dict, bubble_top_n_label, output_path):
+def generate_bubble_chart(df_words, n, color_dict, output_path):
     import circlify
-    df_words = df_words.sort_values(by="count", ascending=False).reset_index(drop=True)
+    df_words.columns = [col.lower() for col in df_words.columns]
     df_words = df_words.iloc[:n]
     labels = list(df_words['word'])
     counts = list(df_words['count'])

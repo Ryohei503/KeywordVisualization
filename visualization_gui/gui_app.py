@@ -4,6 +4,7 @@ import os
 import pandas as pd
 from config import top_n_menu_font, sheet_menu_font, optionmenu_bg, top_n_options
 from get_utils import get_sheet_names, get_save_path
+from word_count_util import word_count
 from plots import (
     load_japanese_font, get_colordict,
     generate_graph, generate_wordcloud, generate_bubble_chart
@@ -27,6 +28,9 @@ class VisualizationApp(tk.Tk):
         # --- Top Frame ---
         self.frame_top = tk.Frame(self, padx=10, pady=10)
         self.frame_top.pack(fill='x', anchor='nw')
+        # --- Generate Word Count Button ---
+        btn_import_wordcount = ttk.Button(self.frame_top, text="Generate Word Count Table", command=self.generate_wordcount_table)
+        btn_import_wordcount.pack(fill='x', padx=10, pady=(0, 5))
         self.selected_info_label = tk.Label(self.frame_top, text="", bg="white", font=("Arial", 10), anchor='w')
         self.selected_info_label.pack(fill='x', padx=10, pady=(0, 5))
         # --- Top N Variables ---
@@ -38,6 +42,19 @@ class VisualizationApp(tk.Tk):
         self.selected_bubble_top_n = tk.IntVar(value=20)
         # --- Buttons and Menus ---
         self.setup_gui()
+
+    def generate_wordcount_table(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Excel File for Word Count",
+            filetypes=[("Excel files", "*.xlsx;*.xls")]
+        )
+        if not file_path:
+            messagebox.showinfo("Cancel", "No file selected for word count.")
+            return
+        try:
+            word_count(file_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to import an Excel file for word count:\n{str(e)}")
 
     def setup_gui(self):
         # --- Select File Button ---
@@ -105,7 +122,7 @@ class VisualizationApp(tk.Tk):
     def select_excel_file(self):
         file_path = filedialog.askopenfilename(
             title="Select an Excel File",
-            filetypes=[("Excel files", "*.xlsx;*.xls"), ("All files", "*.*")]
+            filetypes=[("Word Count Excel files", "*wordcount*.xlsx;*wordcount*.xls")]
         )
         if not file_path:
             messagebox.showinfo("Cancel", "There is no file selected")
@@ -114,6 +131,7 @@ class VisualizationApp(tk.Tk):
         try:
             sheet_names = get_sheet_names(self.selected_excel_file)
             self.sheet_names_global = sheet_names
+            self._missing_col_error_shown_per_sheet = {}  # Track error per sheet
             # Remove previous OptionMenu if it exists
             if self.sheet_menu:
                 self.sheet_menu.destroy()
@@ -136,12 +154,47 @@ class VisualizationApp(tk.Tk):
                     self.selected_info_label.config(
                         text=f"File: {os.path.basename(self.selected_excel_file)} | Category: {self.selected_sheet.get()}"
                     )
+                    try:
+                        self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
+                        sheet = self.selected_sheet.get()
+                        # Normalize column names to lowercase
+                        self.df.columns = [col.lower() for col in self.df.columns]
+                        if "word" not in self.df.columns or "count" not in self.df.columns:
+                            if not self._missing_col_error_shown_per_sheet.get(sheet, False):
+                                messagebox.showerror("Error", "There is no 'Word' or 'Count' column in the data")
+                                self._missing_col_error_shown_per_sheet[sheet] = True
+                            self.selected_info_label.config(text="")
+                            if self.sheet_menu:
+                                self.sheet_menu.destroy()
+                                self.sheet_menu = None
+                            self.df = None
+                        else:
+                            self._missing_col_error_shown_per_sheet[sheet] = False
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Failed to read sheet:\n{str(e)}")
+                        self.df = None
                 self.selected_sheet.trace_add('write', update_label)
+            # Create dataframe for the first sheet by default
+            self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
+            sheet = self.selected_sheet.get()
+            # Normalize column names to lowercase
+            self.df.columns = [col.lower() for col in self.df.columns]
+            if "word" not in self.df.columns or "count" not in self.df.columns:
+                if not self._missing_col_error_shown_per_sheet.get(sheet, False):
+                    messagebox.showerror("Error", "There is no 'Word' or 'Count' column in the data")
+                    self._missing_col_error_shown_per_sheet[sheet] = True
+                self.selected_info_label.config(text="")
+                if self.sheet_menu:
+                    self.sheet_menu.destroy()
+                    self.sheet_menu = None
+                self.df = None
+            else:
+                self._missing_col_error_shown_per_sheet[sheet] = False
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read sheets:\n{str(e)}")
 
     def on_generate_graph(self):
-        if not self.selected_excel_file:
+        if not self.selected_excel_file or self.df is None:
             messagebox.showwarning("No File Selected", "Please select an Excel file first.")
             return
         try:
@@ -149,29 +202,29 @@ class VisualizationApp(tk.Tk):
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")
                 return
-            df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
-            if "word" not in df.columns or "count" not in df.columns:
-                messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
-                return
-            df_sorted = df.sort_values(by="count", ascending=False).reset_index(drop=True)
             n = self.selected_top_n.get()
-            df_sorted = df_sorted.iloc[:n]
+            actual_n = min(n, len(self.df))
+            if len(self.df) < n:
+                messagebox.showwarning(
+                    "Not Enough Words",
+                    f"The selected file does not have enough words. Showing {actual_n} words instead of {n}."
+                )
+            df_top = self.df.iloc[:actual_n]
             chunk_size = 20
-            max_count = df_sorted['count'].max()
+            max_count = df_top['count'].max()
             color_dict = get_colordict('viridis', max_count, 1)
             sheet_name = self.selected_sheet.get().replace(" ", "_")
-            file_name = os.path.basename(self.selected_excel_file)
-            top_n_label = self.selected_top_n_label.get().replace(" ", "")
+            top_n_label = f"Top{actual_n}" if actual_n != n else self.selected_top_n_label.get().replace(" ", "")
             base_path = os.path.splitext(self.selected_excel_file)[0]
             output_path = get_save_path(base_path, self.sheet_names_global, sheet_name, f"{top_n_label}_graph")
-            generate_graph(df_sorted, n, chunk_size, color_dict, top_n_label, sheet_name, file_name, output_path, self.sheet_names_global)
+            generate_graph(df_top, chunk_size, color_dict, f"{top_n_label}", sheet_name, output_path, self.sheet_names_global)
             messagebox.showinfo("Completed", f"Saved a graph:\n{output_path}")
             os.startfile(output_path)
         except Exception as e:
             messagebox.showerror("Error", f"There was an error:\n{str(e)}")
 
     def on_generate_wordcloud(self):
-        if not self.selected_excel_file:
+        if not self.selected_excel_file or self.df is None:
             messagebox.showwarning("No File Selected", "Please select an Excel file first.")
             return
         try:
@@ -179,23 +232,25 @@ class VisualizationApp(tk.Tk):
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")
                 return
-            df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
-            if "word" not in df.columns or "count" not in df.columns:
-                messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
-                return
             n = self.selected_wc_top_n.get()
-            wc_top_n_label = self.selected_wc_top_n_label.get().replace(" ", "")
+            actual_n = min(n, len(self.df))
+            if len(self.df) < n:
+                messagebox.showwarning(
+                    "Not Enough Words",
+                    f"The selected file does not have enough words. Showing {actual_n} words instead of {n}."
+                )
+            wc_top_n_label = f"Top{actual_n}" if actual_n != n else self.selected_wc_top_n_label.get().replace(" ", "")
             base_path = os.path.splitext(self.selected_excel_file)[0]
             sheet_name = self.selected_sheet.get().replace(" ", "_")
             output_path = get_save_path(base_path, self.sheet_names_global, sheet_name, f"{wc_top_n_label}_wordcloud")
-            generate_wordcloud(df, n, font_path, wc_top_n_label, output_path)
+            generate_wordcloud(self.df.iloc[:actual_n], actual_n, font_path, output_path)
             messagebox.showinfo("Completed", f"Saved a word cloud:\n{output_path}")
             os.startfile(output_path)
         except Exception as e:
             messagebox.showerror("Error", f"There was an error:\n{str(e)}")
 
     def on_generate_bubble_chart(self):
-        if not self.selected_excel_file:
+        if not self.selected_excel_file or self.df is None:
             messagebox.showwarning("No File Selected", "Please select an Excel file first.")
             return
         try:
@@ -203,19 +258,21 @@ class VisualizationApp(tk.Tk):
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")
                 return
-            df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
-            if "word" not in df.columns or "count" not in df.columns:
-                messagebox.showerror("Error", "There is no 'word' or 'count' column in the data")
-                return
             n = self.selected_bubble_top_n.get()
-            bubble_top_n_label = self.selected_bubble_top_n_label.get().replace(" ", "")
+            actual_n = min(n, len(self.df))
+            if len(self.df) < n:
+                messagebox.showwarning(
+                    "Not Enough Words",
+                    f"The selected file does not have enough words. Showing {actual_n} words instead of {n}."
+                )
+            bubble_top_n_label = f"Top{actual_n}" if actual_n != n else self.selected_bubble_top_n_label.get().replace(" ", "")
             base_path = os.path.splitext(self.selected_excel_file)[0]
             sheet_name = self.selected_sheet.get().replace(" ", "_")
-            max_count = df['count'].max()
-            color_dict = get_colordict('summer', max_count, min(df['count']))
+            max_count = self.df['count'].max()
+            color_dict = get_colordict('summer', max_count, min(self.df['count']))
             output_path = get_save_path(base_path, self.sheet_names_global, sheet_name, f"{bubble_top_n_label}_bubblechart")
-            generate_bubble_chart(df, n, color_dict, bubble_top_n_label, output_path)
+            generate_bubble_chart(self.df.iloc[:actual_n], actual_n, color_dict, output_path)
             messagebox.showinfo("Completed", f"Saved a bubble chart:\n{output_path}")
             os.startfile(output_path)
         except Exception as e:
-            messagebox.showerror("Error", f"There was an error when generating a bubble chart:\n{str(e)}")
+            messagebox.showerror("Error", f"There was an error:\n{str(e)}")

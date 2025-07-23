@@ -5,36 +5,35 @@ from tkinter import filedialog, messagebox
 import os
 import matplotlib
 matplotlib.use('Agg')
-from pie_chart_util import generate_category_pie_chart
-from word_count_util import word_count
 from sentence_transformers import SentenceTransformer
 
 
 
-def categorize_summaries():
-    root = tk.Tk()
-    root.withdraw()
-    input_excel = filedialog.askopenfilename(
-        title="Select Excel file to categorize",
-        filetypes=[("Excel files", "*.xlsx;*.xls"), ("All files", "*.*")]
-    )
-    if not input_excel:
-        print("No file selected.")
-        return None
-
+def categorize_summaries(input_excel):
     df = pd.read_excel(input_excel, sheet_name=0)
-    if 'Summary' not in df.columns:
+    # Normalize column names to lowercase
+    df.columns = [col.lower() for col in df.columns]
+    if 'summary' not in df.columns:
         messagebox.showerror("Error", "The selected Excel file does not contain a 'Summary' column.")
         return None
 
-    df.dropna(subset=['Summary'], inplace=True)
+    df.dropna(subset=['summary'], inplace=True)
 
-    pipeline = joblib.load("classifier_model.pkl")
+    root = tk.Tk()
+    root.withdraw()
+    model_path = filedialog.askopenfilename(
+        title="Select a Model to Categorize Defects",
+        filetypes=[("Model files", "*.pkl")]
+    )
+    if not model_path:
+        messagebox.showinfo("No Selection", "No model file selected for categorization.")
+        return None
+    pipeline = joblib.load(model_path)
     st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     def predict_category(row):
         try:
             # Encode the summary using SentenceTransformer
-            emb = st_model.encode([row['Summary']])  # returns shape (1, dim)
+            emb = st_model.encode([row['summary']])  # returns shape (1, dim)
             proba = pipeline.predict_proba(emb)[0]
             predicted_label = pipeline.classes_[proba.argmax()]
             return predicted_label
@@ -59,9 +58,3 @@ def categorize_summaries():
 
     messagebox.showinfo("Categorized Excel Saved", f"Categorized Excel file saved to:\n{output_excel}")
     return output_excel
-
-# Run categorization and pie chart
-output_excel = categorize_summaries()
-if output_excel is None or not os.path.exists(output_excel):
-    raise ValueError(f"Invalid file path returned by categorize_excel_to_excel: {output_excel}")
-generate_category_pie_chart(output_excel)

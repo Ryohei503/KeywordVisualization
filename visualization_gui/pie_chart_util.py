@@ -23,5 +23,6 @@ def generate_category_pie_chart(excel_file):
     plt.tight_layout()
     output_pie_chart = f"{os.path.splitext(excel_file)[0]}_pie_chart.png"
     plt.savefig(output_pie_chart)
-    plt.close()
+    plt.close(fig)
     messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
+    os.startfile(output_pie_chart)

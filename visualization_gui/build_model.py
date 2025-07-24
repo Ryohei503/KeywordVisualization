@@ -7,7 +7,6 @@ from sklearn.utils.class_weight import compute_class_weight
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 import joblib
-import tkinter as tk
 from sentence_transformers import SentenceTransformer
 from tkinter import messagebox
 import os

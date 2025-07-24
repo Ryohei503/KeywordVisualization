@@ -1,6 +1,5 @@
 import pandas as pd
 import joblib
-import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 import matplotlib
@@ -19,8 +18,6 @@ def categorize_summaries(input_excel):
 
     df.dropna(subset=['summary'], inplace=True)
 
-    root = tk.Tk()
-    root.withdraw()
     model_path = filedialog.askopenfilename(
         title="Select a Model to Categorize Defects",
         filetypes=[("Model files", "*.pkl")]

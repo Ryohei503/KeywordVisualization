@@ -1,20 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
-import pandas as pd
 from config import (
     btn_bg, top_n_options, label_font, label_bg,
     button_font, button_padding, small_button_font, small_button_padding
 )
 from get_utils import get_sheet_names, get_save_path
-from word_count_util import word_count
-from plots import (
-    load_japanese_font, get_colordict,
-    generate_graph, generate_wordcloud, generate_bubble_chart
-)
-from pie_chart_util import generate_category_pie_chart
-from summary_classifier import categorize_summaries
-from build_model import train_model
 
 
 
@@ -74,6 +65,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showinfo("No Selection", "No file selected for model training.")
             return
         try:
+            from build_model import train_model
             train_model(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to build model:\n{str(e)}")
@@ -87,6 +79,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showinfo("No Selection", "No defect report selected for categorization.")
             return
         try:
+            from summary_classifier import categorize_summaries
             categorize_summaries(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to categorize defects:\n{str(e)}")
@@ -100,6 +93,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showinfo("No Selection", "No categorized defect report selected for pie chart.")
             return
         try:
+            from plots import generate_category_pie_chart
             generate_category_pie_chart(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate pie chart:\n{str(e)}")
@@ -113,6 +107,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showinfo("No Selection", "No defect report selected for word count.")
             return
         try:
+            from word_count_util import word_count
             word_count(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate a word count table:\n{str(e)}")
@@ -217,6 +212,7 @@ class VisualizationApp(tk.Tk):
                         text=f"File: {os.path.basename(self.selected_excel_file)} | Category: {self.selected_sheet.get()}"
                     )
                     try:
+                        import pandas as pd
                         self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
                         sheet = self.selected_sheet.get()
                         # Normalize column names to lowercase
@@ -237,6 +233,7 @@ class VisualizationApp(tk.Tk):
                         self.df = None
                 self.selected_sheet.trace_add('write', update_label)
             # Create dataframe for the first sheet by default
+            import pandas as pd
             self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
             sheet = self.selected_sheet.get()
             # Normalize column names to lowercase
@@ -260,6 +257,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showwarning("No File Selected", "Please select a word count table first.")
             return
         try:
+            from plots import load_japanese_font, get_colordict, generate_graph
             font_path = load_japanese_font()
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")
@@ -290,6 +288,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showwarning("No File Selected", "Please select a word count table first.")
             return
         try:
+            from plots import load_japanese_font, generate_wordcloud
             font_path = load_japanese_font()
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")
@@ -316,6 +315,7 @@ class VisualizationApp(tk.Tk):
             messagebox.showwarning("No File Selected", "Please select a word count table first.")
             return
         try:
+            from plots import load_japanese_font, get_colordict, generate_bubble_chart
             font_path = load_japanese_font()
             if not font_path:
                 messagebox.showerror("Error", "Failed to read fonts")

@@ -6,6 +6,8 @@ from matplotlib.colors import Normalize
 import seaborn as sns
 from wordcloud import WordCloud
 import pandas as pd
+from tkinter import messagebox
+
 
 
 def load_japanese_font():
@@ -43,11 +45,13 @@ def generate_graph(df_sorted, chunk_size, color_dict, top_n_label, sheet_name, o
         colors = [color_dict.get(i) for i in df_chunk['count']]
         x = list(df_chunk['count'])
         y = list(range(len(df_chunk)))
+        # Assign y to hue and set legend=False to avoid deprecation warning
         sns.barplot(
             x=x, y=y, data=df_chunk, alpha=0.9, orient='h',
-            ax=axs[0][col], palette=colors
+            ax=axs[0][col], hue=y, palette=colors, legend=False
         )
         axs[0][col].set_xlim(0, max_count + 1)
+        axs[0][col].set_yticks(range(len(labels)))
         axs[0][col].set_yticklabels(labels, fontsize=12)
         for side in ['bottom', 'right', 'top', 'left']:
             axs[0][col].spines[side].set_color('white')
@@ -112,3 +116,27 @@ def generate_bubble_chart(df_words, n, color_dict, output_path):
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
+
+def generate_category_pie_chart(excel_file):
+    df = pd.read_excel(excel_file, sheet_name=None, header=None)
+    category_counts = {sheet_name: len(sheet_data) for sheet_name, sheet_data in df.items() if not sheet_data.empty}
+    labels = list(category_counts.keys())[::-1]
+    sizes = list(category_counts.values())[::-1]
+    fig, ax = plt.subplots(figsize=(6, 6))
+    patches, texts, pcts = ax.pie(
+        sizes, labels=labels, autopct='%.1f%%',
+        wedgeprops={'linewidth': 3.0, 'edgecolor': 'white'},
+        textprops={'size': 'x-large'},
+        startangle=90
+    )
+    for i, patch in enumerate(patches):
+        texts[i].set_color(patch.get_facecolor())
+    plt.setp(pcts, color='black')
+    plt.setp(texts, fontweight=600)
+    ax.set_title('Defect Categories', fontsize=18)
+    plt.tight_layout()
+    output_pie_chart = f"{os.path.splitext(excel_file)[0]}_pie_chart.png"
+    plt.savefig(output_pie_chart)
+    plt.close(fig)
+    messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
+    os.startfile(output_pie_chart)

@@ -148,3 +148,41 @@ def generate_category_pie_chart(excel_file):
     plt.close(fig)
     messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
     os.startfile(output_pie_chart)
+
+def generate_category_box_plot(excel_file):
+    # Read data from Excel file
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    categories = ['UI', 'API', 'DB', 'Others']
+    data = []
+
+    for category in categories:
+        if category in excel_data:
+            df = excel_data[category]
+            df.columns = [col.strip().lower() for col in df.columns]  # Clean and lower case column names
+            if 'days spent to resolve' in df.columns:
+                for days in df['days spent to resolve']:
+                    data.append({'Category': category, 'DaysToResolve': days})
+            else:
+                messagebox.showerror("Error", f"No 'Days Spent To Resolve' column found.")
+                return
+
+    if not data:
+        messagebox.showerror("Error", "No valid data found in the Excel file.")
+        return
+
+    # Create DataFrame
+    df = pd.DataFrame(data)
+
+    # Generate box plot
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x='Category', y='DaysToResolve', data=df, palette='Set2', order=categories)
+    plt.title('Days Spent to Resolve Defects by Category')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.ylabel('Days Spent to Resolve')
+    plt.xlabel('Defect Category')
+    plt.tight_layout()
+    output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
+    plt.savefig(output_boxplot)
+    plt.close()
+    messagebox.showinfo("Box Plot Saved", f"Box plot saved as:\n{output_boxplot}")
+    os.startfile(output_boxplot)

@@ -30,6 +30,8 @@ def get_colordict(cmap_name, max_value, min_value=1):
     return {i: cmap(norm(i)) for i in range(min_value, max_value + 1)}
 
 def generate_graph(df, chunk_size, color_dict, top_n_label, sheet_name, output_path, sheet_names_global):
+    # Apply Seaborn darkgrid style
+    sns.set_style("darkgrid")
     df.columns = [col.lower() for col in df.columns]
     num_words = len(df)
     index_list = [

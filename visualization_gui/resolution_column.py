@@ -17,15 +17,18 @@ def add_resolution_period_column_logic(file_path):
     # Read the sheet into a DataFrame
     df = pd.read_excel(file_path, engine="openpyxl", sheet_name=original_sheet_name)
 
-    # Convert 'Created' and 'Resolved' columns to proper date formats
-    if "Created" in df.columns:
-        df["Created"] = df["Created"].apply(convert_to_date)
-    if "Resolved" in df.columns:
-        df["Resolved"] = df["Resolved"].apply(convert_to_date)
+    # Convert column names to lowercase
+    df.columns = [col.lower() for col in df.columns]
 
-    # Add the 'Days spent to resolve' column
-    if "Created" in df.columns and "Resolved" in df.columns:
-        df["Days spent to resolve"] = (df["Resolved"] - df["Created"]).dt.days
+    # Convert 'created' and 'resolved' columns to proper date formats
+    if "created" in df.columns:
+        df["created"] = df["created"].apply(convert_to_date)
+    if "resolved" in df.columns:
+        df["resolved"] = df["resolved"].apply(convert_to_date)
+
+    # Add the 'days spent to resolve' column
+    if "created" in df.columns and "resolved" in df.columns:
+        df["days spent to resolve"] = (df["resolved"] - df["created"]).dt.days
     else:
         raise ValueError("Required columns 'Created' and 'Resolved' are missing.")
 

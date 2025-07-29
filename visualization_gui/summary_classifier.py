@@ -54,4 +54,3 @@ def categorize_summaries(input_excel):
 
 
     messagebox.showinfo("Categorized Excel Saved", f"Categorized Excel file saved to:\n{output_excel}")
-    return output_excel

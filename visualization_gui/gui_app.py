@@ -49,13 +49,14 @@ class VisualizationApp(tk.Tk):
         self.selected_info_label = tk.Label(self.frame_top, text="", bg=label_bg, font=label_font)
         self.selected_info_label.pack(fill='x', padx=10, pady=(0, 5))
         # --- Top N Variables ---
+        defaultTopNLabel = 'Top 10'
         defaultTopN = 10
-        self.selected_top_n_label = tk.StringVar(value=defaultTopN)
-        self.selected_top_n = tk.IntVar(value=20)
-        self.selected_wc_top_n_label = tk.StringVar(value=defaultTopN)
-        self.selected_wc_top_n = tk.IntVar(value=20)
-        self.selected_bubble_top_n_label = tk.StringVar(value=defaultTopN)
-        self.selected_bubble_top_n = tk.IntVar(value=20)
+        self.selected_top_n_label = tk.StringVar(value=defaultTopNLabel)
+        self.selected_top_n = tk.IntVar(value=defaultTopN)
+        self.selected_wc_top_n_label = tk.StringVar(value=defaultTopNLabel)
+        self.selected_wc_top_n = tk.IntVar(value=defaultTopN)
+        self.selected_bubble_top_n_label = tk.StringVar(value=defaultTopNLabel)
+        self.selected_bubble_top_n = tk.IntVar(value=defaultTopN)
         # --- Buttons and Menus ---
         self.setup_gui()
 
@@ -307,7 +308,7 @@ class VisualizationApp(tk.Tk):
             base_path = os.path.splitext(self.selected_excel_file)[0]
             sheet_name = self.selected_sheet.get().replace(" ", "_")
             output_path = get_save_path(base_path, self.sheet_names_global, sheet_name, f"{wc_top_n_label}_wordcloud")
-            generate_wordcloud(self.df.iloc[:actual_n], actual_n, font_path, output_path)
+            generate_wordcloud(self.df.iloc[:actual_n], actual_n, font_path, output_path, sheet_name, wc_top_n_label, self.sheet_names_global)
             messagebox.showinfo("Completed", f"Saved a word cloud:\n{output_path}")
             os.startfile(output_path)
         except Exception as e:
@@ -336,7 +337,7 @@ class VisualizationApp(tk.Tk):
             max_count = self.df['count'].max()
             color_dict = get_colordict('summer', max_count, min(self.df['count']))
             output_path = get_save_path(base_path, self.sheet_names_global, sheet_name, f"{bubble_top_n_label}_bubblechart")
-            generate_bubble_chart(self.df.iloc[:actual_n], actual_n, color_dict, output_path)
+            generate_bubble_chart(self.df.iloc[:actual_n], actual_n, color_dict, output_path, sheet_name, bubble_top_n_label,self.sheet_names_global)
             messagebox.showinfo("Completed", f"Saved a bubble chart:\n{output_path}")
             os.startfile(output_path)
         except Exception as e:

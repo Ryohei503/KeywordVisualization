@@ -29,18 +29,18 @@ def get_colordict(cmap_name, max_value, min_value=1):
     norm = Normalize(vmin=min_value, vmax=max_value)
     return {i: cmap(norm(i)) for i in range(min_value, max_value + 1)}
 
-def generate_graph(df_sorted, chunk_size, color_dict, top_n_label, sheet_name, output_path, sheet_names_global):
-    df_sorted.columns = [col.lower() for col in df_sorted.columns]
-    num_words = len(df_sorted)
+def generate_graph(df, chunk_size, color_dict, top_n_label, sheet_name, output_path, sheet_names_global):
+    df.columns = [col.lower() for col in df.columns]
+    num_words = len(df)
     index_list = [
         [start, min(start + chunk_size, num_words)]
         for start in range(0, num_words, chunk_size)
     ]
     num_chunks = len(index_list)
     fig, axs = plt.subplots(1, num_chunks, figsize=(16, 8), facecolor='white', squeeze=False)
-    max_count = df_sorted['count'].max()
+    max_count = df['count'].max()
     for col, idx in zip(range(num_chunks), index_list):
-        df_chunk = df_sorted.iloc[idx[0]:idx[1]]
+        df_chunk = df.iloc[idx[0]:idx[1]]
         labels = [f"{w}: {n}" for w, n in zip(df_chunk['word'], df_chunk['count'])]
         colors = [color_dict.get(i) for i in df_chunk['count']]
         x = list(df_chunk['count'])
@@ -67,7 +67,7 @@ def generate_graph(df_sorted, chunk_size, color_dict, top_n_label, sheet_name, o
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
 
-def generate_wordcloud(df, n, font_path, output_path):
+def generate_wordcloud(df, n, font_path, output_path, sheet_name, top_n_label, sheet_names_global):
     df.columns = [col.lower() for col in df.columns]
     df = df.iloc[:n]
     freq_dict = pd.Series(df["count"].values, index=df["word"]).to_dict()
@@ -83,11 +83,16 @@ def generate_wordcloud(df, n, font_path, output_path):
     plt.figure(figsize=(10, 8))
     plt.imshow(wc, interpolation="bilinear")
     plt.axis("off")
+    # Title logic
+    if len(sheet_names_global) == 1:
+        plt.title(f"Word Frequency Graph - {top_n_label}", fontsize=16)
+    else:
+        plt.title(f"Word Frequency Graph - {sheet_name} - {top_n_label}", fontsize=16)
     plt.tight_layout(pad=0)
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
 
-def generate_bubble_chart(df_words, n, color_dict, output_path):
+def generate_bubble_chart(df_words, n, color_dict, output_path, sheet_name, top_n_label, sheet_names_global):
     import circlify
     df_words.columns = [col.lower() for col in df_words.columns]
     df_words = df_words.iloc[:n]
@@ -112,7 +117,10 @@ def generate_bubble_chart(df_words, n, color_dict, output_path):
         x, y, r = circle.x, circle.y, circle.r
         ax.add_patch(plt.Circle((x, y), r, alpha=0.9, color=color_dict.get(count)))
         plt.annotate(f"{label}\n{count}", (x, y), size=12, va='center', ha='center')
-    plt.title("Keyword Frequency Bubble Chart")
+    if len(sheet_names_global) == 1:
+        plt.title(f"Bubble Chart - {top_n_label}", fontsize=16)
+    else:
+        plt.title(f"Bubble Chart - {sheet_name} - {top_n_label}", fontsize=16)
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()

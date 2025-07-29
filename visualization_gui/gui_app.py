@@ -29,6 +29,15 @@ class VisualizationApp(tk.Tk):
         self.frame_top.pack(fill='x', anchor='nw')
         # --- Button Width ---
         button_width = 30
+        # --- Add Resolution Period Column Button ---
+        btn_add_resolution_period = ttk.Button(
+            self.frame_top, 
+            text="Add Resolution Period Column", 
+            command=self.add_resolution_period_column, 
+            width=button_width
+        )
+        btn_add_resolution_period.pack(padx=(0, 5), pady=(0, 5))
+        btn_add_resolution_period.configure(style="Small.TButton")
         # --- Build Model Button ---
         btn_build_model = ttk.Button(self.frame_top, text="Build Model", command=self.build_model, width=button_width)
         btn_build_model.pack(padx=(0, 5), pady=(0, 5))
@@ -59,6 +68,21 @@ class VisualizationApp(tk.Tk):
         self.selected_bubble_top_n = tk.IntVar(value=defaultTopN)
         # --- Buttons and Menus ---
         self.setup_gui()
+
+    def add_resolution_period_column(self):
+        file_path = filedialog.askopenfilename(
+            title="Select a Defect Report", 
+            filetypes=[("Excel Files", "*.xlsx;*.xls")]
+        )
+        if not file_path:
+            messagebox.showinfo("No Selection", "No file selected.")
+            return
+        try:
+            from resolution_column import add_resolution_period_column_logic
+            add_resolution_period_column_logic(file_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to add resolution period column:\n{str(e)}")
+    
 
     def build_model(self):
         file_path = filedialog.askopenfilename(

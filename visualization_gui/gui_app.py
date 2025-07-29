@@ -49,11 +49,12 @@ class VisualizationApp(tk.Tk):
         self.selected_info_label = tk.Label(self.frame_top, text="", bg=label_bg, font=label_font)
         self.selected_info_label.pack(fill='x', padx=10, pady=(0, 5))
         # --- Top N Variables ---
-        self.selected_top_n_label = tk.StringVar(value="Top 20")
+        defaultTopN = 10
+        self.selected_top_n_label = tk.StringVar(value=defaultTopN)
         self.selected_top_n = tk.IntVar(value=20)
-        self.selected_wc_top_n_label = tk.StringVar(value="Top 20")
+        self.selected_wc_top_n_label = tk.StringVar(value=defaultTopN)
         self.selected_wc_top_n = tk.IntVar(value=20)
-        self.selected_bubble_top_n_label = tk.StringVar(value="Top 20")
+        self.selected_bubble_top_n_label = tk.StringVar(value=defaultTopN)
         self.selected_bubble_top_n = tk.IntVar(value=20)
         # --- Buttons and Menus ---
         self.setup_gui()

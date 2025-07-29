@@ -58,8 +58,8 @@ class VisualizationApp(tk.Tk):
         self.selected_info_label = tk.Label(self.frame_top, text="", bg=label_bg, font=label_font)
         self.selected_info_label.pack(fill='x', padx=10, pady=(0, 5))
         # --- Top N Variables ---
-        defaultTopNLabel = 'Top 10'
         defaultTopN = 10
+        defaultTopNLabel = 'Top ' + str(defaultTopN)
         self.selected_top_n_label = tk.StringVar(value=defaultTopNLabel)
         self.selected_top_n = tk.IntVar(value=defaultTopN)
         self.selected_wc_top_n_label = tk.StringVar(value=defaultTopNLabel)

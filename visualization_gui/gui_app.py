@@ -27,20 +27,22 @@ class VisualizationApp(tk.Tk):
         # --- Top Frame ---
         self.frame_top = tk.Frame(self, padx=10, pady=10)
         self.frame_top.pack(fill='x', anchor='nw')
+        # --- Button Width ---
+        button_width = 30
         # --- Build Model Button ---
-        btn_build_model = ttk.Button(self.frame_top, text="Build Model", command=self.build_model)
+        btn_build_model = ttk.Button(self.frame_top, text="Build Model", command=self.build_model, width=button_width)
         btn_build_model.pack(padx=(0, 5), pady=(0, 5))
         btn_build_model.configure(style="Small.TButton")
         # --- Categorize Defects Button ---
-        btn_categorize = ttk.Button(self.frame_top, text="Categorize Defects", command=self.categorize_defects)
+        btn_categorize = ttk.Button(self.frame_top, text="Categorize Defects", command=self.categorize_defects, width=button_width)
         btn_categorize.pack(padx=(0, 5), pady=(0, 5))
         btn_categorize.configure(style="Small.TButton")
         # --- Generate Pie Chart Button ---
-        btn_piechart = ttk.Button(self.frame_top, text="Generate Defect Category Pie Chart", command=self.generate_pie_chart)
+        btn_piechart = ttk.Button(self.frame_top, text="Generate Defect Category Pie Chart", command=self.generate_pie_chart, width=button_width)
         btn_piechart.pack(padx=(0, 5), pady=(0, 5))
         btn_piechart.configure(style="Small.TButton")
         # --- Generate Word Count Button ---
-        btn_wordcount = ttk.Button(self.frame_top, text="Generate Word Count Table", command=self.generate_wordcount_table)
+        btn_wordcount = ttk.Button(self.frame_top, text="Generate Word Count Table", command=self.generate_wordcount_table, width=button_width)
         btn_wordcount.pack(padx=(0, 5), pady=(0, 5))
         btn_wordcount.configure(style="Small.TButton")
         # --- Info Label ---

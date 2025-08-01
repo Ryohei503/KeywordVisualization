@@ -50,7 +50,7 @@ class VisualizationApp(tk.Tk):
         btn_piechart = ttk.Button(self.frame_top, text="Generate Defect Category Pie Chart", command=self.generate_pie_chart, width=button_width)
         btn_piechart.pack(padx=(0, 5), pady=(0, 5))
         btn_piechart.configure(style="Small.TButton")
-        # --- Generate Box Plot Button ---
+        # --- Generate Box Plot Button (Priority selection via popup) ---
         btn_generate_box_plot = ttk.Button(self.frame_top, text="Generate Defect Category Box Plot", command=self.generate_box_plot, width=button_width)
         btn_generate_box_plot.pack(padx=(0, 5), pady=(0, 5))
         btn_generate_box_plot.configure(style="Small.TButton")
@@ -138,9 +138,32 @@ class VisualizationApp(tk.Tk):
         if not file_path:
             messagebox.showinfo("No Selection", "No categorized defect report selected for box plot.")
             return
+        import pandas as pd
+        try:
+            excel_data = pd.read_excel(file_path, sheet_name=None)
+            priorities = set()
+            for df in excel_data.values():
+                df.columns = [col.lower() for col in df.columns]
+                if "priority" in df.columns:
+                    priorities.update(str(p) for p in df["priority"].dropna().unique())
+            priorities = sorted(priorities)
+        except Exception:
+            priorities = []
+        if priorities:
+            import tkinter.simpledialog as simpledialog
+            options = ["All"] + priorities
+            selected_priority = simpledialog.askstring(
+                "Select Priority",
+                f"Select a priority to filter defect reports:\nOptions: {', '.join(options)}\n(Type exactly as shown, or 'All' for no filter)",
+                initialvalue="All"
+            )
+            if selected_priority is None or selected_priority not in options:
+                return
+        else:
+            selected_priority = "All"
         try:
             from plots import generate_category_box_plot
-            generate_category_box_plot(file_path)
+            generate_category_box_plot(file_path, selected_priority)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate box plot:\n{str(e)}")
 
@@ -239,6 +262,37 @@ class VisualizationApp(tk.Tk):
             if self.sheet_menu:
                 self.sheet_menu.destroy()
                 self.sheet_menu = None
+            # Update priority options if Priority column exists
+            import pandas as pd
+            try:
+                df_priority = pd.read_excel(self.selected_excel_file, sheet_name=sheet_names[0])
+                df_priority.columns = [col.lower() for col in df_priority.columns]
+                if "priority" in df_priority.columns:
+                    priorities = sorted(set(df_priority["priority"].dropna().unique()))
+                    self.priority_options = ["All"] + [str(p) for p in priorities]
+                    self.selected_priority.set("All")
+                    # Recreate priority menu
+                    if self.priority_menu:
+                        self.priority_menu.destroy()
+                    self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
+                    self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+                    self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
+                else:
+                    self.priority_options = ["All"]
+                    self.selected_priority.set("All")
+                    if self.priority_menu:
+                        self.priority_menu.destroy()
+                    self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
+                    self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+                    self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
+            except Exception:
+                self.priority_options = ["All"]
+                self.selected_priority.set("All")
+                if self.priority_menu:
+                    self.priority_menu.destroy()
+                self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
+                self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+                self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
             if len(sheet_names) == 1:
                 self.selected_sheet.set(sheet_names[0])
                 self.selected_info_label.config(

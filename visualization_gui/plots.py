@@ -150,7 +150,7 @@ def generate_category_pie_chart(excel_file):
     messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
     os.startfile(output_pie_chart)
 
-def generate_category_box_plot(excel_file):
+def generate_category_box_plot(excel_file, selected_priority="All"):
     # Read data from Excel file
     excel_data = pd.read_excel(excel_file, sheet_name=None)
     categories = ['UI', 'API', 'DB', 'Others']
@@ -159,8 +159,10 @@ def generate_category_box_plot(excel_file):
     for category in categories:
         if category in excel_data:
             df = excel_data[category]
-            df.columns = [col.strip().lower() for col in df.columns]  # Clean and lower case column names
+            df.columns = [col.strip().lower() for col in df.columns]
             if 'days spent to resolve' in df.columns:
+                if selected_priority != "All" and 'priority' in df.columns:
+                    df = df[df['priority'] == selected_priority]
                 for days in df['days spent to resolve']:
                     data.append({'Category': category, 'DaysToResolve': days})
             else:
@@ -168,7 +170,7 @@ def generate_category_box_plot(excel_file):
                 return
 
     if not data:
-        messagebox.showerror("Error", "No valid data found in the Excel file.")
+        messagebox.showerror("Error", "No valid data found in the Excel file for the selected priority.")
         return
 
     # Create DataFrame
@@ -176,13 +178,19 @@ def generate_category_box_plot(excel_file):
 
     # Generate box plot
     plt.figure(figsize=(8, 6))
-    sns.boxplot(x='Category', y='DaysToResolve', data=df, palette='Set2', order=categories)
-    plt.title('Days Spent to Resolve Defects by Category')
+    title = 'Days Spent to Resolve Defects by Category'
+    if selected_priority != "All":
+        title += f" (Priority: {selected_priority})"
+    sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=categories, legend=False)
+    plt.title(title)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.ylabel('Days Spent to Resolve')
     plt.xlabel('Defect Category')
     plt.tight_layout()
-    output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
+    if selected_priority != "All":
+        output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot_{selected_priority.lower()}.png"
+    else:
+        output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
     plt.savefig(output_boxplot)
     plt.close()
     messagebox.showinfo("Box Plot Saved", f"Box plot saved as:\n{output_boxplot}")

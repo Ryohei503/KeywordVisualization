@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, GridSearchCV
+from sklearn.model_selection import cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report
 from sklearn.utils.class_weight import compute_class_weight
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
@@ -33,14 +32,10 @@ def train_model(file_path):
     model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     X = model.encode(df['summary'].astype(str).tolist())  # X is a dense numpy array
 
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
 
     # Calculate class weights for imbalance handling
-    classes = np.unique(y_train)
-    weights = compute_class_weight('balanced', classes=classes, y=y_train)
+    classes = np.unique(y)
+    weights = compute_class_weight('balanced', classes=classes, y=y)
     class_weights = dict(zip(classes, weights))
 
     # Model pipeline with SMOTE and LogisticRegression (no feature engineering needed)
@@ -60,18 +55,13 @@ def train_model(file_path):
         'clf__C': [0.1, 1, 10]
     }
     grid = GridSearchCV(pipeline, param_grid, cv=3, scoring='f1_weighted', n_jobs=-1)
-    grid.fit(X_train, y_train)
+    grid.fit(X, y)
     pipeline = grid.best_estimator_
 
     # Cross-validation
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    cv_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring='f1_weighted')
+    cv_scores = cross_val_score(pipeline, X, y, cv=cv, scoring='f1_weighted')
     print(f"Cross-Validation F1 Score: {cv_scores.mean():.2f} (+/- {cv_scores.std():.2f})")
-
-    # Evaluation
-    y_pred = pipeline.predict(X_test)
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, zero_division=0))
 
     # Save model with filename based on input file
     base_name = os.path.splitext(os.path.basename(file_path))[0]

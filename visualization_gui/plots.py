@@ -40,6 +40,12 @@ def generate_graph(df, chunk_size, color_dict, top_n_label, sheet_name, output_p
     num_chunks = len(index_list)
     fig, axs = plt.subplots(1, num_chunks, figsize=(16, 8), facecolor='white', squeeze=False)
     max_count = df['count'].max()
+    # Load Japanese font for yticklabels
+    try:
+        font_path = load_japanese_font()
+        font_prop = fm.FontProperties(fname=font_path) if font_path else None
+    except Exception:
+        font_prop = None
     for col, idx in zip(range(num_chunks), index_list):
         df_chunk = df.iloc[idx[0]:idx[1]]
         labels = [f"{w}: {n}" for w, n in zip(df_chunk['word'], df_chunk['count'])]
@@ -53,7 +59,10 @@ def generate_graph(df, chunk_size, color_dict, top_n_label, sheet_name, output_p
         )
         axs[0][col].set_xlim(0, max_count + 1)
         axs[0][col].set_yticks(range(len(labels)))
-        axs[0][col].set_yticklabels(labels, fontsize=12)
+        if font_prop:
+            axs[0][col].set_yticklabels(labels, fontsize=12, fontproperties=font_prop)
+        else:
+            axs[0][col].set_yticklabels(labels, fontsize=12)
         for side in ['bottom', 'right', 'top', 'left']:
             axs[0][col].spines[side].set_color('white')
         ax = axs[0][col]
@@ -156,13 +165,26 @@ def generate_category_box_plot(excel_file, selected_priority="All"):
     categories = ['UI', 'API', 'DB', 'Others']
     data = []
 
+    # Accept list of priorities or 'All'
+    priorities_filter = None
+    show_priorities_in_title = False
+    show_priorities_in_filename = False
+    if isinstance(selected_priority, list):
+        priorities_filter = set(str(p) for p in selected_priority)
+        show_priorities_in_title = True
+        show_priorities_in_filename = True
+    elif selected_priority != "All":
+        priorities_filter = set([str(selected_priority)])
+        show_priorities_in_title = True
+        show_priorities_in_filename = True
+
     for category in categories:
         if category in excel_data:
             df = excel_data[category]
             df.columns = [col.strip().lower() for col in df.columns]
             if 'days spent to resolve' in df.columns:
-                if selected_priority != "All" and 'priority' in df.columns:
-                    df = df[df['priority'] == selected_priority]
+                if priorities_filter and 'priority' in df.columns:
+                    df = df[df['priority'].astype(str).isin(priorities_filter)]
                 for days in df['days spent to resolve']:
                     data.append({'Category': category, 'DaysToResolve': days})
             else:
@@ -179,16 +201,16 @@ def generate_category_box_plot(excel_file, selected_priority="All"):
     # Generate box plot
     plt.figure(figsize=(8, 6))
     title = 'Days Spent to Resolve Defects by Category'
-    if selected_priority != "All":
-        title += f" (Priority: {selected_priority})"
+    if show_priorities_in_title and priorities_filter:
+        title += f" (Priority: {', '.join(priorities_filter)})"
     sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=categories, legend=False)
     plt.title(title)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.ylabel('Days Spent to Resolve')
     plt.xlabel('Defect Category')
     plt.tight_layout()
-    if selected_priority != "All":
-        output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot_{selected_priority.lower()}.png"
+    if show_priorities_in_filename and priorities_filter:
+        output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot_{'_'.join(priorities_filter).lower()}.png"
     else:
         output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
     plt.savefig(output_boxplot)

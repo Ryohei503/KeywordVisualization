@@ -29,6 +29,15 @@ class VisualizationApp(tk.Tk):
         self.frame_top.pack(fill='x', anchor='nw')
         # --- Button Width ---
         button_width = 30
+        # --- Filter Defect Reports Button ---
+        btn_filter_defects = ttk.Button(
+            self.frame_top,
+            text="Filter Defect Reports",
+            command=self.filter_defect_reports,
+            width=button_width
+        )
+        btn_filter_defects.pack(padx=(0, 5), pady=(0, 5))
+        btn_filter_defects.configure(style="Small.TButton")
         # --- Add Resolution Period Column Button ---
         btn_add_resolution_period = ttk.Button(
             self.frame_top, 
@@ -39,11 +48,11 @@ class VisualizationApp(tk.Tk):
         btn_add_resolution_period.pack(padx=(0, 5), pady=(0, 5))
         btn_add_resolution_period.configure(style="Small.TButton")
         # --- Build Model Button ---
-        btn_build_model = ttk.Button(self.frame_top, text="Build Model", command=self.build_model, width=button_width)
+        btn_build_model = ttk.Button(self.frame_top, text="Build Model for Categorization", command=self.build_model, width=button_width)
         btn_build_model.pack(padx=(0, 5), pady=(0, 5))
         btn_build_model.configure(style="Small.TButton")
         # --- Categorize Defects Button ---
-        btn_categorize = ttk.Button(self.frame_top, text="Categorize Defects", command=self.categorize_defects, width=button_width)
+        btn_categorize = ttk.Button(self.frame_top, text="Categorize Defect Reports", command=self.categorize_defects, width=button_width)
         btn_categorize.pack(padx=(0, 5), pady=(0, 5))
         btn_categorize.configure(style="Small.TButton")
         # --- Generate Pie Chart Button ---
@@ -72,6 +81,10 @@ class VisualizationApp(tk.Tk):
         self.selected_bubble_top_n = tk.IntVar(value=defaultTopN)
         # --- Buttons and Menus ---
         self.setup_gui()
+
+    def filter_defect_reports(self):
+        from filter_defect_reports import filter_defect_reports_dialog
+        filter_defect_reports_dialog(self)
 
     def add_resolution_period_column(self):
         file_path = filedialog.askopenfilename(
@@ -149,21 +162,56 @@ class VisualizationApp(tk.Tk):
             priorities = sorted(priorities)
         except Exception:
             priorities = []
+        selected_priorities = []
         if priorities:
-            import tkinter.simpledialog as simpledialog
-            options = ["All"] + priorities
-            selected_priority = simpledialog.askstring(
-                "Select Priority",
-                f"Select a priority to filter defect reports:\nOptions: {', '.join(options)}\n(Type exactly as shown, or 'All' for no filter)",
-                initialvalue="All"
-            )
-            if selected_priority is None or selected_priority not in options:
+            # Multi-select dialog using checkboxes
+            def show_priority_selector(priorities):
+                dialog = tk.Toplevel(self)
+                dialog.title("Select Priorities")
+                dialog.grab_set()
+                dialog.geometry("300x400")
+                label = tk.Label(dialog, text="Select which priority to show:", font=label_font)
+                label.pack(pady=10)
+                var_dict = {}
+                for p in priorities:
+                    var = tk.BooleanVar(value=False)
+                    cb = tk.Checkbutton(dialog, text=p, variable=var, font=small_button_font)
+                    cb.pack(anchor='w', padx=20)
+                    var_dict[p] = var
+                def on_ok():
+                    selected = [p for p, v in var_dict.items() if v.get()]
+                    if not selected:
+                        messagebox.showwarning("No Priority Selected", "Please select at least one priority.", parent=dialog)
+                        return  # Do not close dialog
+                    dialog.selected = selected # Always a list
+                    dialog.destroy()
+                def on_close():
+                    dialog.selected = None
+                    dialog.destroy()
+                dialog.protocol("WM_DELETE_WINDOW", on_close)
+                btn_all = tk.Button(dialog, text="Select All", command=lambda: [v.set(True) for v in var_dict.values()])
+                btn_all.pack(pady=(10,0))
+                btn_none = tk.Button(dialog, text="Deselect All", command=lambda: [v.set(False) for v in var_dict.values()])
+                btn_none.pack()
+                btn_ok = tk.Button(dialog, text="OK", command=on_ok)
+                btn_ok.pack(pady=20)
+                dialog.selected = [] # Always a list
+                self.wait_window(dialog)
+                return dialog.selected
+        if priorities:
+            selected_priorities = show_priority_selector(priorities)
+            # If user cancels dialog or closes window, do nothing
+            if selected_priorities is None or not selected_priorities:
                 return
         else:
-            selected_priority = "All"
+            selected_priorities = []
+            return
+        # If all priorities are selected, treat as 'All' (do not add priorities to title or filename)
+        if isinstance(selected_priorities, list) and set(selected_priorities) == set(priorities):
+            selected_priorities = "All"
         try:
             from plots import generate_category_box_plot
-            generate_category_box_plot(file_path, selected_priority)
+            generate_category_box_plot(file_path, selected_priorities)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate box plot:\n{str(e)}")
 
@@ -258,97 +306,103 @@ class VisualizationApp(tk.Tk):
             sheet_names = get_sheet_names(self.selected_excel_file)
             self.sheet_names_global = sheet_names
             self._missing_col_error_shown_per_sheet = {}  # Track error per sheet
+            # Add 'All' option
+            option_names = ['All Categories'] + sheet_names if len(sheet_names) > 1 else sheet_names
             # Remove previous OptionMenu if it exists
             if self.sheet_menu:
                 self.sheet_menu.destroy()
                 self.sheet_menu = None
-            # Update priority options if Priority column exists
-            import pandas as pd
-            try:
-                df_priority = pd.read_excel(self.selected_excel_file, sheet_name=sheet_names[0])
-                df_priority.columns = [col.lower() for col in df_priority.columns]
-                if "priority" in df_priority.columns:
-                    priorities = sorted(set(df_priority["priority"].dropna().unique()))
-                    self.priority_options = ["All"] + [str(p) for p in priorities]
-                    self.selected_priority.set("All")
-                    # Recreate priority menu
-                    if self.priority_menu:
-                        self.priority_menu.destroy()
-                    self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
-                    self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-                    self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
-                else:
-                    self.priority_options = ["All"]
-                    self.selected_priority.set("All")
-                    if self.priority_menu:
-                        self.priority_menu.destroy()
-                    self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
-                    self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-                    self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
-            except Exception:
-                self.priority_options = ["All"]
-                self.selected_priority.set("All")
-                if self.priority_menu:
-                    self.priority_menu.destroy()
-                self.priority_menu = tk.OptionMenu(self.frame_top, self.selected_priority, *self.priority_options)
-                self.priority_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-                self.priority_menu.pack(side='right', padx=(0, 5), pady=(0, 5))
-            if len(sheet_names) == 1:
-                self.selected_sheet.set(sheet_names[0])
+            self.selected_sheet.set(option_names[0])
+            self.sheet_menu = None
+            if len(option_names) == 1:
                 self.selected_info_label.config(
                     text=f"File: {os.path.basename(self.selected_excel_file)} | Category: None"
                 )
             else:
-                self.selected_sheet.set(sheet_names[0])
-                self.sheet_menu = tk.OptionMenu(self.frame_top, self.selected_sheet, *sheet_names)
+                self.sheet_menu = tk.OptionMenu(self.frame_top, self.selected_sheet, *option_names)
                 self.sheet_menu.config(font=small_button_font, bg=btn_bg, highlightthickness=1, relief="groove")
                 self.sheet_menu["menu"].config(font=small_button_font, bg=btn_bg)
                 self.sheet_menu.pack(side='right', anchor='ne', padx=10, pady=(0, 10))
                 self.selected_info_label.config(
-                    text=f"File: {os.path.basename(self.selected_excel_file)} | Category: {self.selected_sheet.get()}"
+                    text=f"File: {os.path.basename(self.selected_excel_file)}"
                 )
                 def update_label(*args):
+                    selected = self.selected_sheet.get()
                     self.selected_info_label.config(
-                        text=f"File: {os.path.basename(self.selected_excel_file)} | Category: {self.selected_sheet.get()}"
+                        text=f"File: {os.path.basename(self.selected_excel_file)}"
                     )
                     try:
                         import pandas as pd
-                        self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
-                        sheet = self.selected_sheet.get()
-                        # Normalize column names to lowercase
-                        self.df.columns = [col.lower() for col in self.df.columns]
-                        if "word" not in self.df.columns or "count" not in self.df.columns:
-                            if not self._missing_col_error_shown_per_sheet.get(sheet, False):
-                                messagebox.showerror("Missing Columns", "The selected file does not contain both 'Word' and 'Count' columns.")
-                                self._missing_col_error_shown_per_sheet[sheet] = True
-                            self.selected_info_label.config(text="")
-                            if self.sheet_menu:
-                                self.sheet_menu.destroy()
-                                self.sheet_menu = None
-                            self.df = None
+                        if selected == 'All Categories':
+                            # Read all sheets and concatenate
+                            all_dfs = []
+                            excel_data = pd.read_excel(self.selected_excel_file, sheet_name=None)
+                            for sheet, df in excel_data.items():
+                                df.columns = [col.lower() for col in df.columns]
+                                if "word" in df.columns and "count" in df.columns:
+                                    all_dfs.append(df[[col for col in df.columns if col in ["word", "count"]]])
+                            if all_dfs:
+                                # Sort each df by descending count before concat
+                                all_dfs = [df.sort_values('count', ascending=False) for df in all_dfs]
+                                self.df = pd.concat(all_dfs, ignore_index=True)
+                                self.df = self.df.sort_values('count', ascending=False).reset_index(drop=True)
+                                self._missing_col_error_shown_per_sheet['All Categories'] = False
+                            else:
+                                if not self._missing_col_error_shown_per_sheet.get('All Categories', False):
+                                    messagebox.showerror("Missing Columns", "None of the sheets contain both 'Word' and 'Count' columns.")
+                                    self._missing_col_error_shown_per_sheet['All Categories'] = True
+                                self.selected_info_label.config(text="")
+                                self.df = None
                         else:
-                            self._missing_col_error_shown_per_sheet[sheet] = False
+                            self.df = pd.read_excel(self.selected_excel_file, sheet_name=selected)
+                            sheet = selected
+                            self.df.columns = [col.lower() for col in self.df.columns]
+                            if "word" not in self.df.columns or "count" not in self.df.columns:
+                                if not self._missing_col_error_shown_per_sheet.get(sheet, False):
+                                    messagebox.showerror("Missing Columns", "The selected file does not contain both 'Word' and 'Count' columns.")
+                                    self._missing_col_error_shown_per_sheet[sheet] = True
+                                self.selected_info_label.config(text="")
+                                self.df = None
+                            else:
+                                self._missing_col_error_shown_per_sheet[sheet] = False
                     except Exception as e:
                         messagebox.showerror("Error", f"Failed to read sheet:\n{str(e)}")
                         self.df = None
                 self.selected_sheet.trace_add('write', update_label)
             # Create dataframe for the first sheet by default
             import pandas as pd
-            self.df = pd.read_excel(self.selected_excel_file, sheet_name=self.selected_sheet.get())
-            sheet = self.selected_sheet.get()
-            # Normalize column names to lowercase
-            self.df.columns = [col.lower() for col in self.df.columns]
-            if "word" not in self.df.columns or "count" not in self.df.columns:
-                if not self._missing_col_error_shown_per_sheet.get(sheet, False):
-                    messagebox.showerror("Error", "There is no 'Word' or 'Count' column in the data")
-                    self._missing_col_error_shown_per_sheet[sheet] = True
-                self.selected_info_label.config(text="")
-                if self.sheet_menu:
-                    self.sheet_menu.destroy()
-                    self.sheet_menu = None
-                self.df = None
+            selected = self.selected_sheet.get()
+            if selected == 'All Categories':
+                all_dfs = []
+                excel_data = pd.read_excel(self.selected_excel_file, sheet_name=None)
+                for sheet, df in excel_data.items():
+                    df.columns = [col.lower() for col in df.columns]
+                    if "word" in df.columns and "count" in df.columns:
+                        all_dfs.append(df[[col for col in df.columns if col in ["word", "count"]]])
+                if all_dfs:
+                    # Sort each df by descending count before concat
+                    all_dfs = [df.sort_values('count', ascending=False) for df in all_dfs]
+                    self.df = pd.concat(all_dfs, ignore_index=True)
+                    self.df = self.df.sort_values('count', ascending=False).reset_index(drop=True)
+                    self._missing_col_error_shown_per_sheet['All Categories'] = False
+                else:
+                    if not self._missing_col_error_shown_per_sheet.get('All Categories', False):
+                        messagebox.showerror("Error", "None of the sheets contain both 'Word' and 'Count' columns.")
+                        self._missing_col_error_shown_per_sheet['All Categories'] = True
+                    self.selected_info_label.config(text="")
+                    self.df = None
             else:
-                self._missing_col_error_shown_per_sheet[sheet] = False
+                self.df = pd.read_excel(self.selected_excel_file, sheet_name=selected)
+                sheet = selected
+                self.df.columns = [col.lower() for col in self.df.columns]
+                if "word" not in self.df.columns or "count" not in self.df.columns:
+                    if not self._missing_col_error_shown_per_sheet.get(sheet, False):
+                        messagebox.showerror("Error", "There is no 'Word' or 'Count' column in the data")
+                        self._missing_col_error_shown_per_sheet[sheet] = True
+                    self.selected_info_label.config(text="")
+                    self.df = None
+                else:
+                    self._missing_col_error_shown_per_sheet[sheet] = False
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read sheets:\n{str(e)}")
 

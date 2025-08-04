@@ -162,10 +162,10 @@ def generate_category_pie_chart(excel_file):
 def generate_category_box_plot(excel_file, selected_priority="All"):
     # Read data from Excel file
     excel_data = pd.read_excel(excel_file, sheet_name=None)
-    categories = ['UI', 'API', 'DB', 'Others']
     data = []
+    sheet_order = list(excel_data.keys())
 
-    # Accept list of priorities or 'All'
+    # Accept list of priorities or 'All' or None
     priorities_filter = None
     show_priorities_in_title = False
     show_priorities_in_filename = False
@@ -173,26 +173,36 @@ def generate_category_box_plot(excel_file, selected_priority="All"):
         priorities_filter = set(str(p) for p in selected_priority)
         show_priorities_in_title = True
         show_priorities_in_filename = True
-    elif selected_priority != "All":
+    elif selected_priority == "All":
+        priorities_filter = None
+        show_priorities_in_title = False
+        show_priorities_in_filename = False
+    elif selected_priority is None:
+        priorities_filter = None
+        show_priorities_in_title = False
+        show_priorities_in_filename = False
+    else:
         priorities_filter = set([str(selected_priority)])
         show_priorities_in_title = True
         show_priorities_in_filename = True
 
-    for category in categories:
-        if category in excel_data:
-            df = excel_data[category]
-            df.columns = [col.strip().lower() for col in df.columns]
-            if 'days spent to resolve' in df.columns:
-                if priorities_filter and 'priority' in df.columns:
-                    df = df[df['priority'].astype(str).isin(priorities_filter)]
-                for days in df['days spent to resolve']:
-                    data.append({'Category': category, 'DaysToResolve': days})
-            else:
-                messagebox.showerror("Error", f"No 'Days Spent To Resolve' column found.")
-                return
+    for sheet_name in sheet_order:
+        df = excel_data[sheet_name]
+        df.columns = [col.strip().lower() for col in df.columns]
+        if 'days spent to resolve' in df.columns:
+            if priorities_filter is not None and 'priority' in df.columns:
+                df = df[df['priority'].astype(str).isin(priorities_filter)]
+            for days in df['days spent to resolve']:
+                data.append({'Category': sheet_name, 'DaysToResolve': days})
+        else:
+            messagebox.showerror("Error", 'No "days spent to resolve" column found.')
+            return
 
     if not data:
-        messagebox.showerror("Error", "No valid data found in the Excel file for the selected priority.")
+        if priorities_filter is not None:
+            messagebox.showerror("Error", "No valid data found in the Excel file for the selected priority.")
+        else:
+            messagebox.showerror("Error", "No valid data found in the Excel file.")
         return
 
     # Create DataFrame
@@ -203,7 +213,7 @@ def generate_category_box_plot(excel_file, selected_priority="All"):
     title = 'Days Spent to Resolve Defects by Category'
     if show_priorities_in_title and priorities_filter:
         title += f" (Priority: {', '.join(priorities_filter)})"
-    sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=categories, legend=False)
+    sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=sheet_order, legend=False)
     plt.title(title)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.ylabel('Days Spent to Resolve')

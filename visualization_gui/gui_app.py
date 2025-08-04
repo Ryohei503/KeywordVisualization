@@ -155,15 +155,18 @@ class VisualizationApp(tk.Tk):
         try:
             excel_data = pd.read_excel(file_path, sheet_name=None)
             priorities = set()
+            has_priority = False
             for df in excel_data.values():
                 df.columns = [col.lower() for col in df.columns]
                 if "priority" in df.columns:
+                    has_priority = True
                     priorities.update(str(p) for p in df["priority"].dropna().unique())
             priorities = sorted(priorities)
         except Exception:
             priorities = []
+            has_priority = False
         selected_priorities = []
-        if priorities:
+        if has_priority and priorities:
             # Multi-select dialog using checkboxes
             def show_priority_selector(priorities):
                 dialog = tk.Toplevel(self)
@@ -198,17 +201,16 @@ class VisualizationApp(tk.Tk):
                 dialog.selected = [] # Always a list
                 self.wait_window(dialog)
                 return dialog.selected
-        if priorities:
             selected_priorities = show_priority_selector(priorities)
             # If user cancels dialog or closes window, do nothing
             if selected_priorities is None or not selected_priorities:
                 return
+            # If all priorities are selected, treat as 'All' (do not add priorities to title or filename)
+            if isinstance(selected_priorities, list) and set(selected_priorities) == set(priorities):
+                selected_priorities = "All"
         else:
-            selected_priorities = []
-            return
-        # If all priorities are selected, treat as 'All' (do not add priorities to title or filename)
-        if isinstance(selected_priorities, list) and set(selected_priorities) == set(priorities):
-            selected_priorities = "All"
+            # No priority column found, just generate box plot for all data
+            selected_priorities = None
         try:
             from plots import generate_category_box_plot
             generate_category_box_plot(file_path, selected_priorities)

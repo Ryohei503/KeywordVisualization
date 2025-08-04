@@ -39,10 +39,10 @@ def categorize_summaries(input_excel):
 
     df['Predicted_Category'] = df.apply(predict_category, axis=1)
 
-    # Save categorized Excel
-    ordered_categories = ["UI", "API", "DB", "Others"]
-    base = os.path.splitext(input_excel)[0]
-    output_excel = f"{base}_categorized.xlsx"
+    # Save categorized Excel with categories ordered alphabetically, but 'Others' last
+    categories = sorted([cat for cat in df['Predicted_Category'].unique() if cat != 'Others'])
+    ordered_categories = categories + (['Others'] if 'Others' in df['Predicted_Category'].unique() else [])
+    output_excel = input_excel.replace(".xlsx", "_categorized.xlsx")
 
     with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
         for cat in ordered_categories:
@@ -52,5 +52,5 @@ def categorize_summaries(input_excel):
                 original_cols = [col for col in df.columns if col not in ['Predicted_Category']]
                 df_cat[original_cols].to_excel(writer, sheet_name=sheet_name, index=False, header=True)
 
-
     messagebox.showinfo("Categorized Excel Saved", f"Categorized Excel file saved to:\n{output_excel}")
+    os.startfile(output_excel)

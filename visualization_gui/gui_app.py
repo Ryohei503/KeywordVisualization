@@ -318,7 +318,7 @@ class VisualizationApp(tk.Tk):
             self.sheet_menu = None
             if len(option_names) == 1:
                 self.selected_info_label.config(
-                    text=f"File: {os.path.basename(self.selected_excel_file)} | Category: None"
+                    text=f"File: {os.path.basename(self.selected_excel_file)}"
                 )
             else:
                 self.sheet_menu = tk.OptionMenu(self.frame_top, self.selected_sheet, *option_names)

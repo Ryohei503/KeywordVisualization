@@ -227,3 +227,83 @@ def generate_category_box_plot(excel_file, selected_priority="All"):
     plt.close()
     messagebox.showinfo("Box Plot Saved", f"Box plot saved as:\n{output_boxplot}")
     os.startfile(output_boxplot)
+
+
+def generate_priority_category_bar_plot(excel_file):
+    """
+    Generate a bar plot showing the relationship between defect priority and category.
+    Each sheet is treated as a category. The function expects a categorized defect report Excel file.
+    """
+
+    # Read all sheets and concatenate into a single DataFrame with a 'Category' column
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    records = []
+    for sheet_name, df in excel_data.items():
+        if df.empty:
+            continue
+        df = df.copy()
+        df.columns = [col.lower() for col in df.columns]
+        if 'priority' in df.columns:
+            for _, row in df.iterrows():
+                records.append({'Category': sheet_name, 'Priority': row['priority']})
+        else:
+            messagebox.showerror("Error", "No 'priority' column found in the file.")
+            return
+    plot_df = pd.DataFrame(records)
+    # Set plot style
+    sns.set_style("whitegrid")
+    # Create count plot
+    plt.figure(figsize=(10, 6))
+    ax = sns.countplot(data=plot_df, x='Category', hue='Priority', palette='Set2')
+    # Add title and labels
+    plt.title('Defect Count by Category and Priority')
+    plt.xlabel('Defect Category')
+    plt.ylabel('Count')
+    plt.legend(title='Priority')
+    # Save plot
+    plt.tight_layout()
+    output_path = f"{os.path.splitext(excel_file)[0]}_priority_category_barplot.png"
+    plt.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
+    os.startfile(output_path)
+
+
+def generate_issue_type_category_bar_plot(excel_file):
+    """
+    Generate a bar plot showing the number of defects for issue types within each category.
+    Each sheet is treated as a category. The function expects a categorized defect report Excel file.
+    """
+
+    # Read all sheets and concatenate into a single DataFrame with a 'Category' column
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    records = []
+    for sheet_name, df in excel_data.items():
+        if df.empty:
+            continue
+        df = df.copy()
+        df.columns = [col.lower() for col in df.columns]
+        if 'custom field (category)' in df.columns:
+            for _, row in df.iterrows():
+                records.append({'Category': sheet_name, 'IssueType': row['custom field (category)']})
+        else:
+            messagebox.showerror("Error", "No 'custom field (category)' column found in the file.")
+            return
+    plot_df = pd.DataFrame(records)
+    # Set plot style
+    sns.set(style="whitegrid")
+    # Create count plot
+    plt.figure(figsize=(10, 6))
+    ax = sns.countplot(data=plot_df, x='Category', hue='IssueType', palette='Set2')
+    # Add title and labels
+    plt.title('Defect Count by Category and Issue Type')
+    plt.xlabel('Defect Category')
+    plt.ylabel('Count')
+    plt.legend(title='Issue Type')
+    # Save plot
+    plt.tight_layout()
+    output_path = f"{os.path.splitext(excel_file)[0]}_issuetype_category_barplot.png"
+    plt.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
+    os.startfile(output_path)

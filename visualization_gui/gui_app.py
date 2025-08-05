@@ -13,7 +13,7 @@ class VisualizationApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Defect Report Analysis Tool")
-        self.geometry("600x600")
+        self.geometry("600x700")
         # --- Styling ---
         style = ttk.Style()
         style.theme_use("xpnative")
@@ -28,7 +28,7 @@ class VisualizationApp(tk.Tk):
         self.frame_top = tk.Frame(self, padx=10, pady=10)
         self.frame_top.pack(fill='x', anchor='nw')
         # --- Button Width ---
-        button_width = 30
+        button_width = 40
         # --- Filter Defect Reports Button ---
         btn_filter_defects = ttk.Button(
             self.frame_top,
@@ -63,6 +63,24 @@ class VisualizationApp(tk.Tk):
         btn_generate_box_plot = ttk.Button(self.frame_top, text="Generate Defect Category Box Plot", command=self.generate_box_plot, width=button_width)
         btn_generate_box_plot.pack(padx=(0, 5), pady=(0, 5))
         btn_generate_box_plot.configure(style="Small.TButton")
+        # --- Generate Priority-Category Bar Plot Button ---
+        btn_priority_category_bar = ttk.Button(
+            self.frame_top,
+            text="Generate Priority-Category Bar Plot",
+            command=self.generate_priority_category_bar_plot,
+            width=button_width
+        )
+        btn_priority_category_bar.pack(padx=(0, 5), pady=(0, 5))
+        btn_priority_category_bar.configure(style="Small.TButton")
+        # --- Generate IssueType-Category Bar Plot Button ---
+        btn_issuetype_category_bar = ttk.Button(
+            self.frame_top,
+            text="Generate IssueType-Category Bar Plot",
+            command=self.generate_issuetype_category_bar_plot,
+            width=button_width
+        )
+        btn_issuetype_category_bar.pack(padx=(0, 5), pady=(0, 5))
+        btn_issuetype_category_bar.configure(style="Small.TButton")
         # --- Generate Word Count Button ---
         btn_wordcount = ttk.Button(self.frame_top, text="Generate Word Count Table", command=self.generate_wordcount_table, width=button_width)
         btn_wordcount.pack(padx=(0, 5), pady=(0, 5))
@@ -216,6 +234,34 @@ class VisualizationApp(tk.Tk):
             generate_category_box_plot(file_path, selected_priorities)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate box plot:\n{str(e)}")
+
+    def generate_priority_category_bar_plot(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Categorized Defect Report for Bar Plot",
+            filetypes=[("Excel files", "*categorized.xlsx;*categorized.xls")]
+        )
+        if not file_path:
+            messagebox.showinfo("No Selection", "No categorized defect report selected for bar plot.")
+            return
+        try:
+            from plots import generate_priority_category_bar_plot
+            generate_priority_category_bar_plot(file_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
+
+    def generate_issuetype_category_bar_plot(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Categorized Defect Report for Bar Plot",
+            filetypes=[("Excel files", "*categorized.xlsx;*categorized.xls")]
+        )
+        if not file_path:
+            messagebox.showinfo("No Selection", "No categorized defect report selected for bar plot.")
+            return
+        try:
+            from plots import generate_issue_type_category_bar_plot
+            generate_issue_type_category_bar_plot(file_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
 
     def generate_wordcount_table(self):
         file_path = filedialog.askopenfilename(

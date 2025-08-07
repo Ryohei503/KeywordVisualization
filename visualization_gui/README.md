@@ -35,7 +35,7 @@ python main.py
 Follow the GUI prompts to select Excel files and generate visualizations or models.
 
 ## Requirements
-- Python 3.102.7 (tested)
+- Python 3.12.7 (tested)
 - All packages listed in `requirements.txt`
 - Windows OS recommended (tested)
 - Japanese font file `src/ipaexg.ttf` (bundled)

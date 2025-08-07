@@ -1,6 +1,6 @@
 # Defect Report Analysis Tool
 
-This tool provides a graphical user interface (GUI) for analyzing, visualizing, and categorizing software defect reports. It supports advanced NLP, machine learning, and data visualization features for Excel-based defect data.
+This tool provides a graphical user interface (GUI) for analyzing, visualizing, and categorizing software defect reports. It supports advanced NLP, machine learning, and data visualization features for Excel defect reports from Jira.
 
 ## Features
 - Filter defect reports by multiple columns (priority, category, created/resolved date)

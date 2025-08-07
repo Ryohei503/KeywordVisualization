@@ -7,6 +7,10 @@ from nltk.stem import WordNetLemmatizer
 
 # Load Japanese stopwords
 def load_jp_stopwords(path="src/slothlib.txt"):
+    import sys
+    import os
+    if hasattr(sys, '_MEIPASS'):
+        path = os.path.join(sys._MEIPASS, 'src', 'slothlib.txt')
     with open(path, encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 

@@ -19,12 +19,6 @@ This tool provides a graphical user interface (GUI) for analyzing, visualizing, 
 pip install -r requirements.txt
 ```
 
-3. (Optional) For EXE creation, install PyInstaller:
-
-```powershell
-pip install pyinstaller
-```
-
 ## Usage
 Run the main application:
 
@@ -33,6 +27,13 @@ python main.py
 ```
 
 Follow the GUI prompts to select Excel files and generate visualizations or models.
+
+(Optional) For EXE creation, install PyInstaller:
+
+```powershell
+pip install pyinstaller
+```
+Then double click on the batch file to create an EXE file.
 
 ## Requirements
 - Python 3.12.7 (tested)

@@ -72,15 +72,15 @@ class VisualizationApp(tk.Tk):
         )
         btn_priority_category_bar.pack(padx=(0, 5), pady=(0, 5))
         btn_priority_category_bar.configure(style="Small.TButton")
-        # --- Generate IssueType-Category Bar Plot Button ---
-        btn_issuetype_category_bar = ttk.Button(
+        # --- Generate DefectType-Category Bar Plot Button ---
+        btn_defecttype_category_bar = ttk.Button(
             self.frame_top,
-            text="Generate IssueType-Category Bar Plot",
-            command=self.generate_issuetype_category_bar_plot,
+            text="Generate DefectType-Category Bar Plot",
+            command=self.generate_defecttype_category_bar_plot,
             width=button_width
         )
-        btn_issuetype_category_bar.pack(padx=(0, 5), pady=(0, 5))
-        btn_issuetype_category_bar.configure(style="Small.TButton")
+        btn_defecttype_category_bar.pack(padx=(0, 5), pady=(0, 5))
+        btn_defecttype_category_bar.configure(style="Small.TButton")
         # --- Generate Word Count Button ---
         btn_wordcount = ttk.Button(self.frame_top, text="Generate Word Count Table", command=self.generate_wordcount_table, width=button_width)
         btn_wordcount.pack(padx=(0, 5), pady=(0, 5))
@@ -249,7 +249,7 @@ class VisualizationApp(tk.Tk):
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
 
-    def generate_issuetype_category_bar_plot(self):
+    def generate_defecttype_category_bar_plot(self):
         file_path = filedialog.askopenfilename(
             title="Select Categorized Defect Report for Bar Plot",
             filetypes=[("Excel files", "*categorized.xlsx;*categorized.xls")]
@@ -258,8 +258,8 @@ class VisualizationApp(tk.Tk):
             messagebox.showinfo("No Selection", "No categorized defect report selected for bar plot.")
             return
         try:
-            from plots import generate_issue_type_category_bar_plot
-            generate_issue_type_category_bar_plot(file_path)
+            from plots import generate_defect_type_category_bar_plot
+            generate_defect_type_category_bar_plot(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
 

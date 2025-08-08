@@ -269,9 +269,9 @@ def generate_priority_category_bar_plot(excel_file):
     os.startfile(output_path)
 
 
-def generate_issue_type_category_bar_plot(excel_file):
+def generate_defect_type_category_bar_plot(excel_file):
     """
-    Generate a bar plot showing the number of defects for issue types within each category.
+    Generate a bar plot showing the number of defects for defect types within each category.
     Each sheet is treated as a category. The function expects a categorized defect report Excel file.
     """
 
@@ -285,7 +285,7 @@ def generate_issue_type_category_bar_plot(excel_file):
         df.columns = [col.lower() for col in df.columns]
         if 'custom field (category)' in df.columns:
             for _, row in df.iterrows():
-                records.append({'Category': sheet_name, 'IssueType': row['custom field (category)']})
+                records.append({'Category': sheet_name, 'DefectType': row['custom field (category)']})
         else:
             messagebox.showerror("Error", "No 'custom field (category)' column found in the file.")
             return
@@ -294,15 +294,15 @@ def generate_issue_type_category_bar_plot(excel_file):
     sns.set(style="whitegrid")
     # Create count plot
     plt.figure(figsize=(10, 6))
-    ax = sns.countplot(data=plot_df, x='Category', hue='IssueType', palette='Set2')
+    ax = sns.countplot(data=plot_df, x='Category', hue='DefectType', palette='Set2')
     # Add title and labels
-    plt.title('Defect Count by Category and Issue Type')
+    plt.title('Defect Count by Category and Defect Type')
     plt.xlabel('Defect Category')
     plt.ylabel('Count')
-    plt.legend(title='Issue Type')
+    plt.legend(title='Defect Type')
     # Save plot
     plt.tight_layout()
-    output_path = f"{os.path.splitext(excel_file)[0]}_issuetype_category_barplot.png"
+    output_path = f"{os.path.splitext(excel_file)[0]}_defecttype_category_barplot.png"
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
     plt.close()
     messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")

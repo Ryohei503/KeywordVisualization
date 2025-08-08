@@ -20,12 +20,8 @@ pip install -r requirements.txt
 for /f "delims=" %%i in ('python -c "import imblearn, os; print(os.path.join(os.path.dirname(imblearn.__file__), 'VERSION.txt'))"') do set IMBLEARN_VERSION=%%i
 
 :: Build EXE (add other necessary files as needed)
-pyinstaller --onefile --windowed --name=%EXE_NAME% %FONT_ADD% ^
+pyinstaller --onefile --debug=all --name=%EXE_NAME% %FONT_ADD% ^
   --add-data "%IMBLEARN_VERSION%;imblearn" ^
-  --hidden-import=transformers.models.gemma3n ^
-  --hidden-import=transformers.models.glm4v ^
-  --hidden-import=transformers.models.smollm3 ^
-  --hidden-import=transformers.models.t5gemma ^
   %IPADIC_ADD% ^
   %SLOTHLIB_ADD% ^
   "%SCRIPT_NAME%"

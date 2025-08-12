@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
@@ -97,8 +98,61 @@ class VisualizationApp(tk.Tk):
         self.selected_wc_top_n = tk.IntVar(value=defaultTopN)
         self.selected_bubble_top_n_label = tk.StringVar(value=defaultTopNLabel)
         self.selected_bubble_top_n = tk.IntVar(value=defaultTopN)
-        # --- Buttons and Menus ---
-        self.setup_gui()
+        
+        # --- Select File Button ---
+        btn_select_file = ttk.Button(self.frame_top, text="Select Word Count Table", command=self.select_excel_file)
+        btn_select_file.pack(side='left', padx=(0, 10), pady=5)
+        btn_select_file.configure(style="Small.TButton")
+
+        # --- Frame for Graph/WordCloud/Bubble ---
+        frame_buttons = tk.Frame(self, padx=20, pady=20)
+        frame_buttons.pack(fill='both', expand=True)
+
+        # --- Graph ---
+        frame_graph = tk.Frame(frame_buttons)
+        frame_graph.pack(pady=10)
+        btn_graph = ttk.Button(frame_graph, text="Generate Graph", command=self.on_generate_graph, width=20)
+        btn_graph.pack(side='left', padx=(0, 10))
+        top_n_menu = tk.OptionMenu(
+            frame_graph,
+            self.selected_top_n_label,
+            *[label for label, val in top_n_options],
+            command=lambda label: self.set_top_n(dict(top_n_options)[label], label)
+        )
+        top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+        top_n_menu["menu"].config(font=button_font, bg=btn_bg)
+        top_n_menu.pack(side='left')
+
+        # --- Word Cloud ---
+        frame_wordcloud = tk.Frame(frame_buttons)
+        frame_wordcloud.pack(pady=10)
+        btn_wordcloud = ttk.Button(frame_wordcloud, text="Generate Word Cloud", command=self.on_generate_wordcloud, width=20)
+        btn_wordcloud.pack(side='left', padx=(0, 10))
+        wc_top_n_menu = tk.OptionMenu(
+            frame_wordcloud,
+            self.selected_wc_top_n_label,
+            *[label for label, val in top_n_options],
+            command=lambda label: self.set_wc_top_n(dict(top_n_options)[label], label)
+        )
+        wc_top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+        wc_top_n_menu["menu"].config(font=button_font, bg=btn_bg)
+        wc_top_n_menu.pack(side='left')
+
+        # --- Bubble Chart ---
+        frame_bubble = tk.Frame(frame_buttons)
+        frame_bubble.pack(pady=10)
+        btn_bubble = ttk.Button(frame_bubble, text="Generate Bubble Chart", command=self.on_generate_bubble_chart, width=20)
+        btn_bubble.pack(side='left', padx=(0, 10))
+        bubble_top_n_menu = tk.OptionMenu(
+            frame_bubble,
+            self.selected_bubble_top_n_label,
+            *[label for label, val in top_n_options],
+            command=lambda label: self.set_bubble_top_n(dict(top_n_options)[label], label)
+        )
+        bubble_top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
+        bubble_top_n_menu["menu"].config(font=button_font, bg=btn_bg)
+        bubble_top_n_menu.pack(side='left')
+
 
     def filter_defect_reports(self):
         from filter_defect_reports import filter_defect_reports_dialog
@@ -122,16 +176,38 @@ class VisualizationApp(tk.Tk):
     def build_model(self):
         file_path = filedialog.askopenfilename(
             title="Select Train Data",
-            filetypes=[("Excel files", "*.xlsx;*.xls")]
+            filetypes=[("Excel files", "*.xlsx;*.xls")],
+            parent=self
         )
         if not file_path:
-            messagebox.showinfo("No Selection", "No file selected for model training.")
+            messagebox.showinfo("No Selection", "No file selected for model training.", parent=self)
             return
-        try:
+
+        # Progress dialog
+        progress_win = tk.Toplevel(self)
+        progress_win.title("Building Model")
+        progress_win.geometry("300x100")
+        progress_win.transient(self)
+        progress_win.grab_set()
+        tk.Label(progress_win, text="Training model, please wait...", pady=10).pack()
+        pb = ttk.Progressbar(progress_win, mode='indeterminate')
+        pb.pack(fill='x', padx=20, pady=10)
+        pb.start(10)
+
+        def worker():
             from build_model import train_model
-            train_model(file_path)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to build model:\n{str(e)}")
+            success, msg = train_model(file_path)
+            def on_done():
+                pb.stop()
+                progress_win.destroy()
+                if success:
+                    messagebox.showinfo("Model Saved", msg, parent=self)
+                else:
+                    messagebox.showerror("Error", msg, parent=self)
+            self.after(0, on_done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
 
     def categorize_defects(self):
         file_path = filedialog.askopenfilename(
@@ -141,11 +217,40 @@ class VisualizationApp(tk.Tk):
         if not file_path:
             messagebox.showinfo("No Selection", "No defect report selected for categorization.")
             return
-        try:
+
+        model_path = filedialog.askopenfilename(
+            title="Select Model File",
+            filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")]
+        )
+        if not model_path:
+            messagebox.showinfo("No Selection", "No model selected for categorization.")
+            return
+
+        # Progress dialog starts after both files are selected
+        progress_win = tk.Toplevel(self)
+        progress_win.title("Categorizing Defect Report")
+        progress_win.geometry("300x100")
+        progress_win.transient(self)
+        progress_win.grab_set()
+        tk.Label(progress_win, text="Categorizing defect report, please wait...", pady=10).pack()
+        pb = ttk.Progressbar(progress_win, mode='indeterminate')
+        pb.pack(fill='x', padx=20, pady=10)
+        pb.start(10)
+
+        def worker():
             from summary_classifier import categorize_summaries
-            categorize_summaries(file_path)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to categorize defects:\n{str(e)}")
+            success, msg, output_excel = categorize_summaries(file_path, model_path)
+            def on_done():
+                pb.stop()
+                progress_win.destroy()
+                if success:
+                    messagebox.showinfo("Completed", msg, parent=self)
+                    os.startfile(output_excel)
+                else:
+                    messagebox.showerror("Error", msg, parent=self)
+            self.after(0, on_done)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def generate_pie_chart(self):
         file_path = filedialog.askopenfilename(
@@ -276,58 +381,7 @@ class VisualizationApp(tk.Tk):
             word_count(file_path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate a word count table:\n{str(e)}")
-
-
-    def setup_gui(self):
-        # --- Select File Button ---
-        btn_select_file = ttk.Button(self.frame_top, text="Select Word Count Table", command=self.select_excel_file)
-        btn_select_file.pack(side='left', padx=(0, 10), pady=5)
-        btn_select_file.configure(style="Small.TButton")
-        # --- Frame for Graph/WordCloud/Bubble ---
-        frame_buttons = tk.Frame(self, padx=20, pady=20)
-        frame_buttons.pack(fill='both', expand=True)
-        # --- Graph ---
-        frame_graph = tk.Frame(frame_buttons)
-        frame_graph.pack(pady=10)
-        btn_graph = ttk.Button(frame_graph, text="Generate Graph", command=self.on_generate_graph, width=20)
-        btn_graph.pack(side='left', padx=(0, 10))
-        top_n_menu = tk.OptionMenu(
-            frame_graph,
-            self.selected_top_n_label,
-            *[label for label, val in top_n_options],
-            command=lambda label: self.set_top_n(dict(top_n_options)[label], label)
-        )
-        top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-        top_n_menu["menu"].config(font=button_font, bg=btn_bg)
-        top_n_menu.pack(side='left')
-        # --- Word Cloud ---
-        frame_wordcloud = tk.Frame(frame_buttons)
-        frame_wordcloud.pack(pady=10)
-        btn_wordcloud = ttk.Button(frame_wordcloud, text="Generate Word Cloud", command=self.on_generate_wordcloud, width=20)
-        btn_wordcloud.pack(side='left', padx=(0, 10))
-        wc_top_n_menu = tk.OptionMenu(
-            frame_wordcloud,
-            self.selected_wc_top_n_label,
-            *[label for label, val in top_n_options],
-            command=lambda label: self.set_wc_top_n(dict(top_n_options)[label], label)
-        )
-        wc_top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-        wc_top_n_menu["menu"].config(font=button_font, bg=btn_bg)
-        wc_top_n_menu.pack(side='left')
-        # --- Bubble Chart ---
-        frame_bubble = tk.Frame(frame_buttons)
-        frame_bubble.pack(pady=10)
-        btn_bubble = ttk.Button(frame_bubble, text="Generate Bubble Chart", command=self.on_generate_bubble_chart, width=20)
-        btn_bubble.pack(side='left', padx=(0, 10))
-        bubble_top_n_menu = tk.OptionMenu(
-            frame_bubble,
-            self.selected_bubble_top_n_label,
-            *[label for label, val in top_n_options],
-            command=lambda label: self.set_bubble_top_n(dict(top_n_options)[label], label)
-        )
-        bubble_top_n_menu.config(font=button_font, bg=btn_bg, highlightthickness=1, relief="groove")
-        bubble_top_n_menu["menu"].config(font=button_font, bg=btn_bg)
-        bubble_top_n_menu.pack(side='left')
+        
 
     def set_top_n(self, val, label):
         self.selected_top_n.set(val)

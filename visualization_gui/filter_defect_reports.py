@@ -145,7 +145,7 @@ def filter_defect_reports_dialog(parent):
                 # Convert date columns to datetime if present
                 for dcol in date_cols:
                     if dcol in df.columns:
-                        df[dcol] = pd.to_datetime(df[dcol], errors='coerce', dayfirst=True)
+                        df.loc[:, dcol] = pd.to_datetime(df[dcol], errors='coerce', dayfirst=True)
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
         messagebox.showinfo("Filtered Results Saved", f"Filtered defect reports saved to:\n{output_path}")
         try:

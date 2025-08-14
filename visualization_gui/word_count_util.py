@@ -6,16 +6,19 @@ from text_preprocessing import process_text
 
 
 def word_count(input_excel):
+    output_excel = input_excel.replace(".xlsx", "_wordcount.xlsx")
     try:
         xls = pd.ExcelFile(input_excel)
-        output_excel = input_excel.replace(".xlsx", "_wordcount.xlsx")
+        wrote_any = False
+        # Use a temporary writer, only create file if data is written
         with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-            wrote_any = False
             for sheet_name in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=sheet_name)
                 df.columns = [col.lower() for col in df.columns]
                 if 'summary' not in df.columns:
                     messagebox.showerror("Missing Column", f"'Summary' column not found.")
+                    if os.path.exists(output_excel):
+                        os.remove(output_excel)
                     return None
                 all_tokens = []
                 for tokens_str in process_text(df['summary']):
@@ -28,14 +31,13 @@ def word_count(input_excel):
         if wrote_any:
             messagebox.showinfo("Word Count Saved", f"Word count Excel file saved to:\n{output_excel}")
             os.startfile(output_excel)
+            return True
         else:
-            # Remove empty file if nothing was written
             if os.path.exists(output_excel):
                 os.remove(output_excel)
             messagebox.showerror("Word Count Failed", "No word count data was generated.")
+            return False
     except Exception as e:
-        # Remove file if created before error
-        output_excel = input_excel.replace(".xlsx", "_wordcount.xlsx")
         if os.path.exists(output_excel):
             os.remove(output_excel)
-        messagebox.showerror("Word Count Failed", f"Failed to generate a word count table:\n{e}")
+        return False

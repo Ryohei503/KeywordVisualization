@@ -73,7 +73,7 @@ class VisualizationApp(tk.Tk):
                 ("Build Categorization Model", self.build_model),
                 ("Categorize Defect Reports", self.categorize_defects)
             ]),
-            ("Visualizations", [
+            ("Categorized Data Plots", [
                 ("Generate Category Pie Chart", self.generate_pie_chart),
                 ("Generate Category Box Plot", self.generate_box_plot),
                 ("Priority-Category Bar Plot", self.generate_priority_category_bar_plot),
@@ -141,7 +141,7 @@ class VisualizationApp(tk.Tk):
         # Excel Sheet Data section (scrollable)
         self.sheet_data_frame = ttk.LabelFrame(
             self.file_frame,
-            text="Excel Sheet Data",
+            text="Excel Sheet Data (Top 100)",
             style="Card.TLabelframe"
         )
         self.sheet_data_frame.pack(fill="both", expand=True, padx=5, pady=(0, 5))
@@ -225,61 +225,6 @@ class VisualizationApp(tk.Tk):
             )
             menu["menu"].config(font=small_button_font, bg="white")
             menu.pack()
-        
-
-    def update_sheet_data_display(self):
-        # Clear previous content
-        for widget in self.sheet_data_inner.winfo_children():
-            widget.destroy()
-        
-        # Display DataFrame if available
-        import pandas as pd
-        if hasattr(self, 'df') and isinstance(self.df, pd.DataFrame) and self.df is not None:
-            df = self.df.copy()
-            # Limit rows/cols for display if large
-            max_rows = 50
-            max_cols = 15
-            display_df = df.head(max_rows)
-            columns = list(display_df.columns)[:max_cols]
-            
-            # Header
-            for j, col in enumerate(columns):
-                lbl = ttk.Label(
-                    self.sheet_data_inner, 
-                    text=str(col), 
-                    font=label_font, 
-                    background=highlight_color, 
-                    borderwidth=1, 
-                    relief="solid", 
-                    padding=2
-                )
-                lbl.grid(row=0, column=j, sticky="nsew")
-            
-            # Data rows
-            for i, row in enumerate(display_df.itertuples(index=False), start=1):
-                for j, val in enumerate(row[:max_cols]):
-                    lbl = ttk.Label(
-                        self.sheet_data_inner, 
-                        text=str(val), 
-                        font=small_button_font, 
-                        background="white", 
-                        borderwidth=1, 
-                        relief="solid", 
-                        padding=2
-                    )
-                    lbl.grid(row=i, column=j, sticky="nsew")
-            
-            # Make columns expand
-            for j in range(len(columns)):
-                self.sheet_data_inner.grid_columnconfigure(j, weight=1)
-        else:
-            lbl = ttk.Label(
-                self.sheet_data_inner, 
-                text="No data to display.", 
-                font=label_font, 
-                background="white"
-            )
-            lbl.grid(row=0, column=0, sticky="nsew")
     
     def configure_styles(self):
         style = ttk.Style()
@@ -365,10 +310,22 @@ class VisualizationApp(tk.Tk):
             self.selected_bubble_top_n_label.set(label)
 
     def filter_defect_reports(self):
-        self.status_bar.config(text="Opening defect report filter dialog...")
+        self.status_bar.config(text="Selecting defect report to filter...")
+        file_path = filedialog.askopenfilename(
+            title="Select a Defect Report to Filter", 
+            filetypes=[("Excel Files", "*.xlsx;*.xls")]
+        )
+        if not file_path:
+            self.status_bar.config(text="Operation canceled")
+            return
+
+        self.status_bar.config(text="Filtering a defect report...")
         from filter_defect_reports import filter_defect_reports_dialog
-        filter_defect_reports_dialog(self)
-        self.status_bar.config(text="Ready")
+        success = filter_defect_reports_dialog(self, file_path)
+        if success:
+            self.status_bar.config(text="Defect report filtered successfully")
+        else:
+            self.status_bar.config(text="Failed to filter defect report")
 
     def add_resolution_period_column(self):
         self.status_bar.config(text="Selecting defect report to add resolution period...")
@@ -378,7 +335,6 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Operation canceled")
-            messagebox.showinfo("No Selection", "No file selected.")
             return
             
         try:
@@ -387,7 +343,7 @@ class VisualizationApp(tk.Tk):
             add_resolution_period_column_logic(file_path)
             self.status_bar.config(text="Resolution period added successfully")
         except Exception as e:
-            self.status_bar.config(text="Error adding resolution period")
+            self.status_bar.config(text="Failed to add resolution period")
             messagebox.showerror("Error", f"Failed to add resolution period column:\n{str(e)}")
     
     def build_model(self):
@@ -399,41 +355,69 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Model training canceled")
-            messagebox.showinfo("No Selection", "No file selected for model training.", parent=self)
             return
 
         # Progress dialog
         progress_win = tk.Toplevel(self)
         progress_win.title("Building Model")
-        progress_win.geometry("300x100")
+        progress_win.geometry("300x150")
         progress_win.transient(self)
         progress_win.grab_set()
+        
+        # Add flag to track if training should be canceled
+        self.cancel_training = False
+        
         tk.Label(progress_win, text="Training model, please wait...", pady=10).pack()
         pb = ttk.Progressbar(progress_win, mode='indeterminate')
         pb.pack(fill='x', padx=20, pady=10)
         pb.start(10)
+        
+        # Add cancel button
+        def cancel_training():
+            self.cancel_training = True
+            progress_win.destroy()
+            self.status_bar.config(text="Model training canceled")
+            messagebox.showinfo("Canceled", "Model training was canceled.", parent=self)
+        
+        cancel_btn = ttk.Button(
+            progress_win, 
+            text="Cancel", 
+            command=cancel_training,
+            style="Small.TButton"
+        )
+        cancel_btn.pack(pady=5)
 
         def worker():
             try:
                 self.status_bar.config(text="Training model...")
                 from build_model import train_model
-                success, msg = train_model(file_path)
+                
+                # Pass the cancel flag to the training function
+                def should_cancel():
+                    return self.cancel_training
+                    
+                success, msg = train_model(file_path, should_cancel)
+                
                 def on_done():
-                    pb.stop()
-                    progress_win.destroy()
-                    if success:
+                    if progress_win.winfo_exists():  # Check if window still exists
+                        pb.stop()
+                        progress_win.destroy()
+                    if success and not self.cancel_training:
                         self.status_bar.config(text="Model trained successfully")
                         messagebox.showinfo("Model Saved", msg, parent=self)
-                    else:
+                    elif not self.cancel_training:
                         self.status_bar.config(text="Model training failed")
                         messagebox.showerror("Error", msg, parent=self)
+                
                 self.after(0, on_done)
             except Exception as e:
                 def show_error():
-                    pb.stop()
-                    progress_win.destroy()
-                    self.status_bar.config(text=f"Error: {str(e)}")
-                    messagebox.showerror("Error", f"Model training failed:\n{str(e)}", parent=self)
+                    if progress_win.winfo_exists():  # Check if window still exists
+                        pb.stop()
+                        progress_win.destroy()
+                    if not self.cancel_training:
+                        self.status_bar.config(text=f"Error: {str(e)}")
+                        messagebox.showerror("Error", f"Model training failed:\n{str(e)}", parent=self)
                 self.after(0, show_error)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -446,7 +430,6 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Categorization canceled")
-            messagebox.showinfo("No Selection", "No defect report selected for categorization.")
             return
 
         self.status_bar.config(text="Selecting model file...")
@@ -462,36 +445,62 @@ class VisualizationApp(tk.Tk):
         # Progress dialog starts after both files are selected
         progress_win = tk.Toplevel(self)
         progress_win.title("Categorizing Defect Report")
-        progress_win.geometry("300x100")
+        progress_win.geometry("300x150")
         progress_win.transient(self)
         progress_win.grab_set()
+        
+        # Add flag to track if categorization should be canceled
+        self.cancel_categorization = False
+        
         tk.Label(progress_win, text="Categorizing defect report, please wait...", pady=10).pack()
         pb = ttk.Progressbar(progress_win, mode='indeterminate')
         pb.pack(fill='x', padx=20, pady=10)
         pb.start(10)
 
+        # Add cancel button
+        def cancel_categorization():
+            self.cancel_categorization = True
+            progress_win.destroy()
+            self.status_bar.config(text="Categorization canceled")
+            messagebox.showinfo("Canceled", "Categorization was canceled.", parent=self)
+        
+        cancel_btn = ttk.Button(
+            progress_win, 
+            text="Cancel", 
+            command=cancel_categorization,
+            style="Small.TButton"
+        )
+        cancel_btn.pack(pady=5)
+
         def worker():
             try:
                 self.status_bar.config(text="Categorizing defect reports...")
                 from summary_classifier import categorize_summaries
-                success, msg, output_excel = categorize_summaries(file_path, model_path)
+                
+                # Pass the cancel flag to the categorization function
+                def should_cancel():
+                    return self.cancel_categorization
+                    
+                success = categorize_summaries(file_path, model_path, should_cancel)
+                
                 def on_done():
-                    pb.stop()
-                    progress_win.destroy()
-                    if success:
+                    if progress_win.winfo_exists():  # Check if window still exists
+                        pb.stop()
+                        progress_win.destroy()
+                    if success and not self.cancel_categorization:
                         self.status_bar.config(text="Categorization completed successfully")
-                        messagebox.showinfo("Completed", msg, parent=self)
-                        os.startfile(output_excel)
-                    else:
+                    elif not self.cancel_categorization:
                         self.status_bar.config(text="Categorization failed")
-                        messagebox.showerror("Error", msg, parent=self)
+                
                 self.after(0, on_done)
             except Exception as e:
                 def show_error():
-                    pb.stop()
-                    progress_win.destroy()
-                    self.status_bar.config(text=f"Error: {str(e)}")
-                    messagebox.showerror("Error", f"Categorization failed:\n{str(e)}", parent=self)
+                    if progress_win.winfo_exists():  # Check if window still exists
+                        pb.stop()
+                        progress_win.destroy()
+                    if not self.cancel_categorization:
+                        self.status_bar.config(text=f"Error: {str(e)}")
+                        messagebox.showerror("Error", f"Categorization failed:\n{str(e)}", parent=self)
                 self.after(0, show_error)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -504,7 +513,6 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Pie chart generation canceled")
-            messagebox.showinfo("No Selection", "No categorized defect report selected for pie chart.")
             return
         try:
             self.status_bar.config(text="Generating pie chart...")
@@ -523,7 +531,6 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Box plot generation canceled")
-            messagebox.showinfo("No Selection", "No categorized defect report selected for box plot.")
             return
             
         self.status_bar.config(text="Checking priorities...")
@@ -589,15 +596,14 @@ class VisualizationApp(tk.Tk):
         else:
             # No priority column found, just generate box plot for all data
             selected_priorities = None
-            
-        try:
-            self.status_bar.config(text="Generating box plot...")
-            from plots import generate_category_box_plot
-            generate_category_box_plot(file_path, selected_priorities)
+        
+        self.status_bar.config(text="Generating box plot...")
+        from plots import generate_category_box_plot
+        success = generate_category_box_plot(file_path, selected_priorities)
+        if success:
             self.status_bar.config(text="Box plot generated successfully")
-        except Exception as e:
-            self.status_bar.config(text=f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Failed to generate box plot:\n{str(e)}")
+        else:
+            self.status_bar.config(text="Failed to generate box plot")
 
     def generate_priority_category_bar_plot(self):
         self.status_bar.config(text="Selecting categorized defect report...")
@@ -607,16 +613,15 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Bar plot generation canceled")
-            messagebox.showinfo("No Selection", "No categorized defect report selected for bar plot.")
             return
-        try:
-            self.status_bar.config(text="Generating priority-category bar plot...")
-            from plots import generate_priority_category_bar_plot
-            generate_priority_category_bar_plot(file_path)
+    
+        self.status_bar.config(text="Generating priority-category bar plot...")
+        from plots import generate_priority_category_bar_plot
+        success = generate_priority_category_bar_plot(file_path)
+        if success:
             self.status_bar.config(text="Bar plot generated successfully")
-        except Exception as e:
-            self.status_bar.config(text=f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
+        else:
+            self.status_bar.config(text="Failed to generate bar plot")
 
     def generate_defecttype_category_bar_plot(self):
         self.status_bar.config(text="Selecting categorized defect report...")
@@ -626,16 +631,15 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Bar plot generation canceled")
-            messagebox.showinfo("No Selection", "No categorized defect report selected for bar plot.")
             return
-        try:
-            self.status_bar.config(text="Generating defect type-category bar plot...")
-            from plots import generate_defect_type_category_bar_plot
-            generate_defect_type_category_bar_plot(file_path)
+     
+        self.status_bar.config(text="Generating defect type-category bar plot...")
+        from plots import generate_defect_type_category_bar_plot
+        success = generate_defect_type_category_bar_plot(file_path)
+        if success:
             self.status_bar.config(text="Bar plot generated successfully")
-        except Exception as e:
-            self.status_bar.config(text=f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Failed to generate bar plot:\n{str(e)}")
+        else:
+            self.status_bar.config(text="Failed to generate bar plot")
 
     def generate_wordcount_table(self):
         self.status_bar.config(text="Selecting defect report for word count...")
@@ -645,16 +649,14 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="Word count generation canceled")
-            messagebox.showinfo("No Selection", "No defect report selected for word count.")
             return
-        try:
-            self.status_bar.config(text="Generating word count table...")
-            from word_count_util import word_count
-            word_count(file_path)
+        self.status_bar.config(text="Filtering a defect report...")
+        from word_count_util import word_count
+        success = word_count(file_path)
+        if success:
             self.status_bar.config(text="Word count table generated successfully")
-        except Exception as e:
-            self.status_bar.config(text=f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Failed to generate a word count table:\n{str(e)}")
+        else:
+            self.status_bar.config(text="Failed to generate a word count table")
 
     def select_excel_file(self):
         self.status_bar.config(text="Selecting word count table...")
@@ -664,7 +666,6 @@ class VisualizationApp(tk.Tk):
         )
         if not file_path:
             self.status_bar.config(text="No file selected")
-            messagebox.showinfo("No Selection", "There is no file selected")
             return
             
         self.selected_excel_file = file_path
@@ -673,27 +674,39 @@ class VisualizationApp(tk.Tk):
             sheet_names = get_sheet_names(self.selected_excel_file)
             self.sheet_names_global = sheet_names
             self._missing_col_error_shown_per_sheet = {}  # Track error per sheet
-            
+
+            import pandas as pd
+            # Check first sheet for required columns before proceeding
+            first_sheet = sheet_names[0] if sheet_names else None
+            if first_sheet:
+                df_first = pd.read_excel(self.selected_excel_file, sheet_name=first_sheet)
+                df_first.columns = [col.lower() for col in df_first.columns]
+                if "word" not in df_first.columns or "count" not in df_first.columns:
+                    self.status_bar.config(text="File not loaded")
+                    messagebox.showerror("Error", "The first sheet does not contain both 'Word' and 'Count' columns.")
+                    self.df = None
+                    return
+
             # Clear any existing sheet selection widgets first
             for widget in self.file_control_frame.winfo_children():
                 if widget != self.btn_select_file:  # Keep the select button
                     widget.destroy()
-            
+
             # Only show sheet selection if there are multiple sheets
             if len(sheet_names) > 1:
                 # Add 'All' option
                 option_names = ['All Categories'] + sheet_names
-                
+
                 # Remove previous OptionMenu if it exists
                 if self.sheet_menu:
                     self.sheet_menu.destroy()
                     self.sheet_menu = None
-                    
+
                 self.selected_sheet.set(option_names[0])
-                
+
                 # Add sheet selection controls
                 ttk.Label(self.file_control_frame, text="Select sheet:").pack(side="left", padx=(10, 5))
-                
+
                 self.sheet_menu = tk.OptionMenu(
                     self.file_control_frame,
                     self.selected_sheet,
@@ -703,7 +716,7 @@ class VisualizationApp(tk.Tk):
                                     highlightthickness=1, relief="groove", width=15)
                 self.sheet_menu["menu"].config(font=small_button_font, bg='white')
                 self.sheet_menu.pack(side="left")
-                
+
                 # Set up trace for sheet selection
                 def update_label(*args):
                     selected = self.selected_sheet.get()
@@ -745,17 +758,16 @@ class VisualizationApp(tk.Tk):
                     except Exception as e:
                         messagebox.showerror("Error", f"Failed to read sheet:\n{str(e)}")
                         self.df = None
-                        
+
                 self.selected_sheet.trace_add('write', update_label)
-                
+
                 # Update sheet data display when sheet changes
                 def update_sheet_data_and_display(*args):
                     update_label()
                     self.update_sheet_data_display()
                 self.selected_sheet.trace_add('write', update_sheet_data_and_display)
-            
+
             # Load data (for single sheet or default selection)
-            import pandas as pd
             if len(sheet_names) > 1:
                 selected = self.selected_sheet.get()
                 if selected == 'All Categories':
@@ -778,21 +790,75 @@ class VisualizationApp(tk.Tk):
                 # Single sheet - load it directly
                 self.df = pd.read_excel(self.selected_excel_file)
                 self.df.columns = [col.lower() for col in self.df.columns]
-                
+
             # Validate columns
             if self.df is not None and ("word" not in self.df.columns or "count" not in self.df.columns):
                 messagebox.showerror("Error", "The selected sheet does not contain both 'Word' and 'Count' columns.")
                 self.df = None
-                
+
             self.selected_info_label.config(
                 text=f"File: {os.path.basename(file_path)}"
             )
             self.status_bar.config(text=f"Loaded: {os.path.basename(file_path)}")
             self.update_sheet_data_display()
-            
+
         except Exception as e:
-            self.status_bar.config(text=f"Error loading file: {str(e)}")
+            self.status_bar.config(text="Failed to load file")
             messagebox.showerror("Error", f"Failed to read sheets:\n{str(e)}")
+
+    def update_sheet_data_display(self):
+        # Clear previous content
+        for widget in self.sheet_data_inner.winfo_children():
+            widget.destroy()
+        
+        # Display DataFrame if available
+        import pandas as pd
+        if hasattr(self, 'df') and isinstance(self.df, pd.DataFrame) and self.df is not None:
+            df = self.df.copy()
+            # Limit rows/cols for display if large
+            max_rows = 100
+            max_cols = 15
+            display_df = df.head(max_rows)
+            columns = list(display_df.columns)[:max_cols]
+            
+            # Header
+            for j, col in enumerate(columns):
+                lbl = ttk.Label(
+                    self.sheet_data_inner, 
+                    text=str(col), 
+                    font=label_font, 
+                    background=highlight_color, 
+                    borderwidth=1, 
+                    relief="solid", 
+                    padding=2
+                )
+                lbl.grid(row=0, column=j, sticky="nsew")
+            
+            # Data rows
+            for i, row in enumerate(display_df.itertuples(index=False), start=1):
+                for j, val in enumerate(row[:max_cols]):
+                    lbl = ttk.Label(
+                        self.sheet_data_inner, 
+                        text=str(val), 
+                        font=small_button_font, 
+                        background="white", 
+                        borderwidth=1, 
+                        relief="solid", 
+                        padding=2
+                    )
+                    lbl.grid(row=i, column=j, sticky="nsew")
+            
+            # Make columns expand
+            for j in range(len(columns)):
+                self.sheet_data_inner.grid_columnconfigure(j, weight=1)
+        else:
+            lbl = ttk.Label(
+                self.sheet_data_inner, 
+                text="No data to display.", 
+                font=label_font, 
+                background="white"
+            )
+            lbl.grid(row=0, column=0, sticky="nsew")
 
     def on_generate_graph(self):
         if not self.selected_excel_file or self.df is None:
@@ -811,7 +877,6 @@ class VisualizationApp(tk.Tk):
             n = self.selected_top_n.get()
             actual_n = min(n, len(self.df))
             if len(self.df) < n:
-                self.status_bar.config(text="Not enough words - showing fewer")
                 messagebox.showwarning(
                     "Not Enough Words",
                     f"The selected word count table does not have enough words. Showing {actual_n} words instead of {n}."
@@ -851,7 +916,6 @@ class VisualizationApp(tk.Tk):
             n = self.selected_wc_top_n.get()
             actual_n = min(n, len(self.df))
             if len(self.df) < n:
-                self.status_bar.config(text="Not enough words - showing fewer")
                 messagebox.showwarning(
                     "Not Enough Words",
                     f"The selected word count table does not have enough words. Showing {actual_n} words instead of {n}."
@@ -887,7 +951,6 @@ class VisualizationApp(tk.Tk):
             n = self.selected_bubble_top_n.get()
             actual_n = min(n, len(self.df))
             if len(self.df) < n:
-                self.status_bar.config(text="Not enough words - showing fewer")
                 messagebox.showwarning(
                     "Not Enough Words",
                     f"The selected word count table does not have enough words. Showing {actual_n} words instead of {n}."

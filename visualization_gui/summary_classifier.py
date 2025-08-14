@@ -1,6 +1,6 @@
 import pandas as pd
 import joblib
-from tkinter import filedialog, messagebox
+from tkinter import messagebox
 import os
 import matplotlib
 matplotlib.use('Agg')
@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 
 
 
-def categorize_summaries(input_excel, model_path=None):
+def categorize_summaries(input_excel, model_path=None, should_cancel=None):
     try:
         df = pd.read_excel(input_excel, sheet_name=0)
         # Normalize column names to lowercase
@@ -25,17 +25,28 @@ def categorize_summaries(input_excel, model_path=None):
             return None
         pipeline = joblib.load(model_path)
         st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        def predict_category(row):
+        
+        predicted_categories = []
+        for _, row in df.iterrows():
+            # Check for cancellation between each prediction
+            if should_cancel and should_cancel():
+                return False
+                
             try:
                 # Encode the summary using SentenceTransformer
                 emb = st_model.encode([row['summary']])  # returns shape (1, dim)
                 proba = pipeline.predict_proba(emb)[0]
                 predicted_label = pipeline.classes_[proba.argmax()]
-                return predicted_label
+                predicted_categories.append(predicted_label)
             except Exception as e:
                 messagebox.showerror("Prediction Error", f"Prediction error: {e}")
+                predicted_categories.append("Error")
 
-        df['Predicted_Category'] = df.apply(predict_category, axis=1)
+        df['Predicted_Category'] = predicted_categories
+
+        # Check for cancellation before saving
+        if should_cancel and should_cancel():
+            return False
 
         # Save categorized Excel with categories ordered alphabetically, but 'Others' last
         categories = sorted([cat for cat in df['Predicted_Category'].unique() if cat != 'Others'])
@@ -44,13 +55,22 @@ def categorize_summaries(input_excel, model_path=None):
 
         with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
             for cat in ordered_categories:
+                # Check for cancellation between each sheet
+                if should_cancel and should_cancel():
+                    return False
+                    
                 df_cat = df[df['Predicted_Category'] == cat]
                 if not df_cat.empty:
                     sheet_name = str(cat)[:31]
                     original_cols = [col for col in df.columns if col not in ['Predicted_Category']]
                     df_cat[original_cols].to_excel(writer, sheet_name=sheet_name, index=False, header=True)
-
-        return True, f"Categorized Excel file saved to:\n{output_excel}", output_excel
+        messagebox.showinfo("Categorization Complete", f"Categorized Excel file saved to:\n{output_excel}")
+        try:
+            os.startfile(output_excel)
+        except Exception:
+            pass
+        return True
 
     except Exception as e:
-        return False, str(e)
+        messagebox.showerror("Error", f"An error occurred during categorization:\n{e}")
+        return False

@@ -1,14 +1,7 @@
 import pandas as pd
-from tkinter import filedialog, messagebox
+from tkinter import messagebox
 
-def filter_defect_reports_dialog(parent):
-    input_excel = filedialog.askopenfilename(
-        title="Select a Defect Report to Filter",
-        filetypes=[("Excel Files", "*.xlsx;*.xls")]
-    )
-    if not input_excel:
-        messagebox.showinfo("No Selection", "No file selected.")
-        return
+def filter_defect_reports_dialog(parent, input_excel):
     try:
         excel_data = pd.read_excel(input_excel, sheet_name=None)
         found_columns = set()
@@ -23,7 +16,6 @@ def filter_defect_reports_dialog(parent):
             return
         # Multi-column filter dialog for 'Priority', 'Custom field (Category)', 'created', and 'resolved'
         import tkinter as tk
-        from datetime import datetime
         # Gather all unique values for each categorical filter column
         filter_columns = [col for col in ["Priority", "Custom field (Category)"] if col in found_columns]
         date_columns = [col for col in ["created", "resolved"] if any(col in df.columns for df in excel_data.values())]
@@ -152,5 +144,7 @@ def filter_defect_reports_dialog(parent):
             os.startfile(output_path)
         except Exception:
             pass
+        return True
     except Exception as e:
         messagebox.showerror("Error", f"Failed to read defect report:\n{str(e)}")
+        return False

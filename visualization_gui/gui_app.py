@@ -56,7 +56,7 @@ class VisualizationApp(tk.Tk):
         # Create right panel for visualization tools
         self.right_panel = ttk.LabelFrame(
             main_container, 
-            text="Keyword Visualization Tools",
+            text="Keyword Visualization",
             padding=frame_padding,
             style="Card.TLabelframe"
         )

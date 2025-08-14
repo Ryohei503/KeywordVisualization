@@ -59,5 +59,7 @@ Then double click on the batch file to create an EXE file.
 - `filter_defect_reports.py`: Filtering logic
 - `resolution_column.py`: Add resolution period
 - `word_count_util.py`, `text_preprocessing.py`: Text analysis
+- `get_utils.py`: Utility functions for data retrieval
+- `config.py`: Configuration settings
 - `requirements.txt`: All required Python packages
 - `src/ipaexg.ttf`: Japanese font

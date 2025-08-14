@@ -12,8 +12,9 @@ This tool provides a graphical user interface (GUI) for analyzing, visualizing, 
 - Multi-sheet Excel support
 
 ## Installation
-1. Clone or download this repository.
-2. Install all required Python packages:
+1. Clone or download 'visualization_gui' folder.
+2. Open the folder with a code editor.
+3. Install all required Python packages:
 
 ```powershell
 pip install -r requirements.txt

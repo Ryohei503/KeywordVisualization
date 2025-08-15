@@ -8,12 +8,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.utils.class_weight import compute_class_weight
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
-import joblib
 from sentence_transformers import SentenceTransformer
-import os
 
+# Global variable to store the trained pipeline
+_trained_pipeline = None
+
+def get_trained_pipeline():
+    """Returns the trained pipeline"""
+    return _trained_pipeline
 
 def train_model(file_path, should_cancel=None):
+    global _trained_pipeline
     try:
         # Initial data loading
         df = pd.read_excel(file_path)
@@ -80,6 +85,7 @@ def train_model(file_path, should_cancel=None):
             # Full training if not canceled
             grid.fit(X, y)
             pipeline = grid.best_estimator_
+            _trained_pipeline = pipeline  # Store the trained pipeline
 
             # Cross-validation
             cv_scores = cross_val_score(
@@ -96,28 +102,7 @@ def train_model(file_path, should_cancel=None):
         if should_cancel and should_cancel():
             return False, "Training canceled by user"
 
-        # Model saving
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
-        default_model_name = f"{base_name}_classifier_model.pkl"
-        output_path = filedialog.asksaveasfilename(
-            title="Save Model As",
-            initialfile=default_model_name,
-            defaultextension=".pkl",
-            filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")]
-        )
-        if not output_path:
-            return False, "Model save cancelled by user."
-            
-        if should_cancel and should_cancel():
-            return False, "Training canceled by user"
-            
-        joblib.dump(pipeline, output_path)
-
-        return True, f"Model saved as '{output_path}'"
+        return True, "Model trained successfully"
 
     except Exception as e:
         return False, str(e)

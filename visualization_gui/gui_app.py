@@ -316,16 +316,23 @@ class VisualizationApp(tk.Tk):
             filetypes=[("Excel Files", "*.xlsx;*.xls")]
         )
         if not file_path:
-            self.status_bar.config(text="Operation canceled")
+            self.status_bar.config(text="Filtering canceled")
             return
 
-        self.status_bar.config(text="Filtering a defect report...")
-        from filter_defect_reports import filter_defect_reports_dialog
-        success = filter_defect_reports_dialog(self, file_path)
-        if success:
-            self.status_bar.config(text="Defect report filtered successfully")
-        else:
+        try:
+            self.status_bar.config(text="Filtering a defect report...")
+            from filter_defect_reports import filter_defect_reports_dialog
+            success, output_path = filter_defect_reports_dialog(self, file_path)
+            if success:
+                self.status_bar.config(text="Defect report filtered successfully")
+                messagebox.showinfo("Filtered Results Saved", f"Filtered defect reports saved to:\n{output_path}")
+                os.startfile(output_path)
+            else:
+                self.status_bar.config(text="Filtering canceled")
+                messagebox.showinfo("Canceled", "Filtering canceled.")
+        except Exception as e:
             self.status_bar.config(text="Failed to filter defect report")
+            messagebox.showerror("Error", f"Failed to filter defect report:\n{str(e)}")
 
     def add_resolution_period_column(self):
         self.status_bar.config(text="Selecting defect report to add resolution period...")
@@ -334,14 +341,16 @@ class VisualizationApp(tk.Tk):
             filetypes=[("Excel Files", "*.xlsx;*.xls")]
         )
         if not file_path:
-            self.status_bar.config(text="Operation canceled")
+            self.status_bar.config(text="Adding resolution period column canceled")
             return
             
         try:
             self.status_bar.config(text="Adding resolution period column...")
             from resolution_column import add_resolution_period_column_logic
-            add_resolution_period_column_logic(file_path)
+            output_path = add_resolution_period_column_logic(file_path)
             self.status_bar.config(text="Resolution period added successfully")
+            messagebox.showinfo("Success", f"Defect report with resolution period column saved to:\n{output_path}")
+            os.startfile(output_path)
         except Exception as e:
             self.status_bar.config(text="Failed to add resolution period")
             messagebox.showerror("Error", f"Failed to add resolution period column:\n{str(e)}")
@@ -402,17 +411,45 @@ class VisualizationApp(tk.Tk):
                     if progress_win.winfo_exists():  # Check if window still exists
                         pb.stop()
                         progress_win.destroy()
-                    if success and not self.cancel_training:
-                        self.status_bar.config(text="Model trained successfully")
-                        messagebox.showinfo("Model Saved", msg, parent=self)
-                    elif not self.cancel_training:
-                        self.status_bar.config(text="Model training failed")
-                        messagebox.showerror("Error", msg, parent=self)
+                    
+                    if not success or self.cancel_training:
+                        if not self.cancel_training:
+                            self.status_bar.config(text="Model training failed")
+                            messagebox.showerror("Error", msg, parent=self)
+                        return
+                    
+                    # Show save dialog after progress window is closed
+                    base_name = os.path.splitext(os.path.basename(file_path))[0]
+                    default_model_name = f"{base_name}_classifier_model.pkl"
+                    output_path = filedialog.asksaveasfilename(
+                        title="Save Model As",
+                        initialfile=default_model_name,
+                        defaultextension=".pkl",
+                        filetypes=[("Pickle files", "*.pkl"), ("All files", "*.*")]
+                    )
+                    
+                    if not output_path:
+                        self.status_bar.config(text="Model save canceled")
+                        return
+                        
+                    if self.cancel_training:
+                        return
+                        
+                    try:
+                        import joblib
+                        from build_model import get_trained_pipeline
+                        pipeline = get_trained_pipeline()
+                        joblib.dump(pipeline, output_path)
+                        self.status_bar.config(text="Model saved successfully")
+                        messagebox.showinfo("Model Saved", f"Model saved as '{output_path}'", parent=self)
+                    except Exception as e:
+                        self.status_bar.config(text="Failed to save model")
+                        messagebox.showerror("Error", f"Failed to save model:\n{str(e)}", parent=self)
                 
                 self.after(0, on_done)
             except Exception as e:
                 def show_error():
-                    if progress_win.winfo_exists():  # Check if window still exists
+                    if progress_win.winfo_exists():
                         pb.stop()
                         progress_win.destroy()
                     if not self.cancel_training:
@@ -481,15 +518,26 @@ class VisualizationApp(tk.Tk):
                 def should_cancel():
                     return self.cancel_categorization
                     
-                success = categorize_summaries(file_path, model_path, should_cancel)
+                output_path = categorize_summaries(file_path, model_path, should_cancel)
                 
                 def on_done():
                     if progress_win.winfo_exists():  # Check if window still exists
                         pb.stop()
                         progress_win.destroy()
-                    if success and not self.cancel_categorization:
+                    
+                    if self.cancel_categorization:
+                        return
+
+                    if isinstance(output_path, str):  # Success case - result is the output path
                         self.status_bar.config(text="Categorization completed successfully")
-                    elif not self.cancel_categorization:
+                        messagebox.showinfo("Categorization Complete", 
+                                           f"Categorized Excel file saved to:\n{output_path}", 
+                                           parent=self)
+                        try:
+                            os.startfile(output_path)
+                        except Exception:
+                            pass
+                    elif output_path is False:  # Failure case
                         self.status_bar.config(text="Categorization failed")
                 
                 self.after(0, on_done)
@@ -517,8 +565,10 @@ class VisualizationApp(tk.Tk):
         try:
             self.status_bar.config(text="Generating pie chart...")
             from plots import generate_category_pie_chart
-            generate_category_pie_chart(file_path)
+            output_pie_chart = generate_category_pie_chart(file_path)
             self.status_bar.config(text="Pie chart generated successfully")
+            messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
+            os.startfile(output_pie_chart)
         except Exception as e:
             self.status_bar.config(text=f"Error: {str(e)}")
             messagebox.showerror("Error", f"Failed to generate pie chart:\n{str(e)}")
@@ -597,13 +647,19 @@ class VisualizationApp(tk.Tk):
             # No priority column found, just generate box plot for all data
             selected_priorities = None
         
-        self.status_bar.config(text="Generating box plot...")
-        from plots import generate_category_box_plot
-        success = generate_category_box_plot(file_path, selected_priorities)
-        if success:
-            self.status_bar.config(text="Box plot generated successfully")
-        else:
-            self.status_bar.config(text="Failed to generate box plot")
+        try:
+            self.status_bar.config(text="Generating box plot...")
+            from plots import generate_category_box_plot
+            success, output_path, msg = generate_category_box_plot(file_path, selected_priorities)
+            if success:
+                self.status_bar.config(text="Box plot generated successfully")
+                messagebox.showinfo("Box Plot Saved", f"Box plot saved as:\n{output_path}")
+                os.startfile(output_path)
+            else:
+                self.status_bar.config(text="Failed to generate box plot")
+                messagebox.showerror("Error", msg)
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while generating the box plot:\n{str(e)}")
 
     def generate_priority_category_bar_plot(self):
         self.status_bar.config(text="Selecting categorized defect report...")
@@ -615,13 +671,16 @@ class VisualizationApp(tk.Tk):
             self.status_bar.config(text="Bar plot generation canceled")
             return
     
-        self.status_bar.config(text="Generating priority-category bar plot...")
-        from plots import generate_priority_category_bar_plot
-        success = generate_priority_category_bar_plot(file_path)
-        if success:
+        try:
+            self.status_bar.config(text="Generating priority-category bar plot...")
+            from plots import generate_priority_category_bar_plot
+            output_path = generate_priority_category_bar_plot(file_path)
             self.status_bar.config(text="Bar plot generated successfully")
-        else:
+            messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
+            os.startfile(output_path)
+        except Exception as e:
             self.status_bar.config(text="Failed to generate bar plot")
+            messagebox.showerror("Error", f"An error occurred while generating the bar plot:\n{str(e)}")
 
     def generate_defecttype_category_bar_plot(self):
         self.status_bar.config(text="Selecting categorized defect report...")
@@ -633,13 +692,16 @@ class VisualizationApp(tk.Tk):
             self.status_bar.config(text="Bar plot generation canceled")
             return
      
-        self.status_bar.config(text="Generating defect type-category bar plot...")
-        from plots import generate_defect_type_category_bar_plot
-        success = generate_defect_type_category_bar_plot(file_path)
-        if success:
+        try:
+            self.status_bar.config(text="Generating defect type-category bar plot...")
+            from plots import generate_defect_type_category_bar_plot
+            output_path = generate_defect_type_category_bar_plot(file_path)
             self.status_bar.config(text="Bar plot generated successfully")
-        else:
+            messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
+            os.startfile(output_path)
+        except Exception as e:
             self.status_bar.config(text="Failed to generate bar plot")
+            messagebox.showerror("Error", f"An error occurred while generating the bar plot:\n{str(e)}")
 
     def generate_wordcount_table(self):
         self.status_bar.config(text="Selecting defect report for word count...")
@@ -650,13 +712,17 @@ class VisualizationApp(tk.Tk):
         if not file_path:
             self.status_bar.config(text="Word count generation canceled")
             return
+        
         self.status_bar.config(text="Filtering a defect report...")
         from word_count_util import word_count
-        success = word_count(file_path)
-        if success:
-            self.status_bar.config(text="Word count table generated successfully")
-        else:
+        output_path, success, message = word_count(file_path)
+        if not success:
             self.status_bar.config(text="Failed to generate a word count table")
+            messagebox.showerror("Error", message)
+            return
+        self.status_bar.config(text="Word count table generated successfully")
+        messagebox.showinfo("Word Count Saved", f"Word count Excel file saved to:\n{output_path}")
+        os.startfile(output_path)
 
     def select_excel_file(self):
         self.status_bar.config(text="Selecting word count table...")

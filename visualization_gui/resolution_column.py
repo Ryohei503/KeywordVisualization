@@ -1,6 +1,4 @@
-import os
 import pandas as pd
-from tkinter import messagebox
 from openpyxl import load_workbook
 
 def convert_to_date(value):
@@ -38,6 +36,5 @@ def add_resolution_period_column_logic(input_excel):
     with pd.ExcelWriter(output_excel, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name=original_sheet_name)
 
-    # Save the workbook
-    messagebox.showinfo("Success", f"Defect report with resolution period column saved to:\n{output_excel}")
-    os.startfile(output_excel)
+    return output_excel
+    

@@ -1,11 +1,9 @@
 import pandas as pd
 import joblib
 from tkinter import messagebox
-import os
 import matplotlib
 matplotlib.use('Agg')
 from sentence_transformers import SentenceTransformer
-
 
 
 def categorize_summaries(input_excel, model_path=None, should_cancel=None):
@@ -15,14 +13,14 @@ def categorize_summaries(input_excel, model_path=None, should_cancel=None):
         df.columns = [col.lower() for col in df.columns]
         if 'summary' not in df.columns:
             messagebox.showerror("Error", "The selected Excel file does not contain a 'Summary' column.")
-            return None
+            return False
 
         df.dropna(subset=['summary'], inplace=True)
 
         # model_path is now provided by the GUI, do not prompt again
         if not model_path:
             messagebox.showinfo("No Selection", "No model file selected for categorization.")
-            return None
+            return False
         pipeline = joblib.load(model_path)
         st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         
@@ -64,12 +62,8 @@ def categorize_summaries(input_excel, model_path=None, should_cancel=None):
                     sheet_name = str(cat)[:31]
                     original_cols = [col for col in df.columns if col not in ['Predicted_Category']]
                     df_cat[original_cols].to_excel(writer, sheet_name=sheet_name, index=False, header=True)
-        messagebox.showinfo("Categorization Complete", f"Categorized Excel file saved to:\n{output_excel}")
-        try:
-            os.startfile(output_excel)
-        except Exception:
-            pass
-        return True
+        
+        return output_excel  # Return the output path instead of showing message
 
     except Exception as e:
         messagebox.showerror("Error", f"An error occurred during categorization:\n{e}")

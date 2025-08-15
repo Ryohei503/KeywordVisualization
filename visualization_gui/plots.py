@@ -6,8 +6,6 @@ from matplotlib.colors import Normalize
 import seaborn as sns
 from wordcloud import WordCloud
 import pandas as pd
-from tkinter import messagebox
-
 
 
 def load_japanese_font():
@@ -153,85 +151,76 @@ def generate_category_pie_chart(excel_file):
     plt.setp(texts, fontweight=600)
     ax.set_title('Defect Categories', fontsize=18)
     plt.tight_layout()
-    output_pie_chart = f"{os.path.splitext(excel_file)[0]}_pie_chart.png"
-    plt.savefig(output_pie_chart)
+    output_path = f"{os.path.splitext(excel_file)[0]}_pie_chart.png"
+    plt.savefig(output_path)
     plt.close(fig)
-    messagebox.showinfo("Pie Chart Saved", f"Pie chart saved as:\n{output_pie_chart}")
-    os.startfile(output_pie_chart)
+    return output_path
 
 def generate_category_box_plot(excel_file, selected_priority="All"):
-    try:
-        # Read data from Excel file
-        excel_data = pd.read_excel(excel_file, sheet_name=None)
-        data = []
-        sheet_order = list(excel_data.keys())
+    # Read data from Excel file
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    data = []
+    sheet_order = list(excel_data.keys())
 
-        # Accept list of priorities or 'All' or None
+    # Accept list of priorities or 'All' or None
+    priorities_filter = None
+    show_priorities_in_title = False
+    show_priorities_in_filename = False
+    if isinstance(selected_priority, list):
+        priorities_filter = set(str(p) for p in selected_priority)
+        show_priorities_in_title = True
+        show_priorities_in_filename = True
+    elif selected_priority == "All":
         priorities_filter = None
         show_priorities_in_title = False
         show_priorities_in_filename = False
-        if isinstance(selected_priority, list):
-            priorities_filter = set(str(p) for p in selected_priority)
-            show_priorities_in_title = True
-            show_priorities_in_filename = True
-        elif selected_priority == "All":
-            priorities_filter = None
-            show_priorities_in_title = False
-            show_priorities_in_filename = False
-        elif selected_priority is None:
-            priorities_filter = None
-            show_priorities_in_title = False
-            show_priorities_in_filename = False
+    elif selected_priority is None:
+        priorities_filter = None
+        show_priorities_in_title = False
+        show_priorities_in_filename = False
+    else:
+        priorities_filter = set([str(selected_priority)])
+        show_priorities_in_title = True
+        show_priorities_in_filename = True
+
+    for sheet_name in sheet_order:
+        df = excel_data[sheet_name]
+        df.columns = [col.strip().lower() for col in df.columns]
+        if 'days spent to resolve' in df.columns:
+            if priorities_filter is not None and 'priority' in df.columns:
+                df = df[df['priority'].astype(str).isin(priorities_filter)]
+            for days in df['days spent to resolve']:
+                data.append({'Category': sheet_name, 'DaysToResolve': days})
         else:
-            priorities_filter = set([str(selected_priority)])
-            show_priorities_in_title = True
-            show_priorities_in_filename = True
+            return False, None, 'No "days spent to resolve" column found.'
 
-        for sheet_name in sheet_order:
-            df = excel_data[sheet_name]
-            df.columns = [col.strip().lower() for col in df.columns]
-            if 'days spent to resolve' in df.columns:
-                if priorities_filter is not None and 'priority' in df.columns:
-                    df = df[df['priority'].astype(str).isin(priorities_filter)]
-                for days in df['days spent to resolve']:
-                    data.append({'Category': sheet_name, 'DaysToResolve': days})
-            else:
-                messagebox.showerror("Error", 'No "days spent to resolve" column found.')
-                return
-
-        if not data:
-            if priorities_filter is not None:
-                messagebox.showerror("Error", "No valid data found in the Excel file for the selected priority.")
-            else:
-                messagebox.showerror("Error", "No valid data found in the Excel file.")
-            return
-
-        # Create DataFrame
-        df = pd.DataFrame(data)
-
-        # Generate box plot
-        plt.figure(figsize=(8, 6))
-        title = 'Days Spent to Resolve Defects by Category'
-        if show_priorities_in_title and priorities_filter:
-            title += f" (Priority: {', '.join(priorities_filter)})"
-        sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=sheet_order, legend=False)
-        plt.title(title)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.ylabel('Days Spent to Resolve')
-        plt.xlabel('Defect Category')
-        plt.tight_layout()
-        if show_priorities_in_filename and priorities_filter:
-            output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot_{'_'.join(priorities_filter).lower()}.png"
+    if not data:
+        if priorities_filter is not None:
+            return False, None, "No valid data found in the Excel file for the selected priority."
         else:
-            output_boxplot = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
-        plt.savefig(output_boxplot)
-        plt.close()
-        messagebox.showinfo("Box Plot Saved", f"Box plot saved as:\n{output_boxplot}")
-        os.startfile(output_boxplot)
-        return True
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while generating the box plot:\n{str(e)}")
-        return False
+            return False, None, "No valid data found in the Excel file."
+
+    # Create DataFrame
+    df = pd.DataFrame(data)
+
+    # Generate box plot
+    plt.figure(figsize=(8, 6))
+    title = 'Days Spent to Resolve Defects by Category'
+    if show_priorities_in_title and priorities_filter:
+        title += f" (Priority: {', '.join(priorities_filter)})"
+    sns.boxplot(x='Category', y='DaysToResolve', data=df, hue='Category', palette='Set2', order=sheet_order, legend=False)
+    plt.title(title)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.ylabel('Days Spent to Resolve')
+    plt.xlabel('Defect Category')
+    plt.tight_layout()
+    if show_priorities_in_filename and priorities_filter:
+        output_path = f"{os.path.splitext(excel_file)[0]}_boxplot_{'_'.join(priorities_filter).lower()}.png"
+    else:
+        output_path = f"{os.path.splitext(excel_file)[0]}_boxplot.png"
+    plt.savefig(output_path)
+    plt.close()
+    return True, output_path, None
 
 
 def generate_priority_category_bar_plot(excel_file):
@@ -239,44 +228,36 @@ def generate_priority_category_bar_plot(excel_file):
     Generate a bar plot showing the relationship between defect priority and category.
     Each sheet is treated as a category. The function expects a categorized defect report Excel file.
     """
-
-    try:
-        # Read all sheets and concatenate into a single DataFrame with a 'Category' column
-        excel_data = pd.read_excel(excel_file, sheet_name=None)
-        records = []
-        for sheet_name, df in excel_data.items():
-            if df.empty:
-                continue
-            df = df.copy()
-            df.columns = [col.lower() for col in df.columns]
-            if 'priority' in df.columns:
-                for _, row in df.iterrows():
-                    records.append({'Category': sheet_name, 'Priority': row['priority']})
-            else:
-                messagebox.showerror("Error", "No 'priority' column found in the file.")
-                return
-        plot_df = pd.DataFrame(records)
-        # Set plot style
-        sns.set_style("whitegrid")
-        # Create count plot
-        plt.figure(figsize=(10, 6))
-        ax = sns.countplot(data=plot_df, x='Category', hue='Priority', palette='Set2')
-        # Add title and labels
-        plt.title('Defect Count by Category and Priority')
-        plt.xlabel('Defect Category')
-        plt.ylabel('Count')
-        plt.legend(title='Priority')
-        # Save plot
-        plt.tight_layout()
-        output_path = f"{os.path.splitext(excel_file)[0]}_priority_category_barplot.png"
-        plt.savefig(output_path, bbox_inches='tight', dpi=300)
-        plt.close()
-        messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
-        os.startfile(output_path)
-        return True
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while generating the bar plot:\n{str(e)}")
-        return False
+    # Read all sheets and concatenate into a single DataFrame with a 'Category' column
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    records = []
+    for sheet_name, df in excel_data.items():
+        if df.empty:
+            continue
+        df = df.copy()
+        df.columns = [col.lower() for col in df.columns]
+        if 'priority' in df.columns:
+            for _, row in df.iterrows():
+                records.append({'Category': sheet_name, 'Priority': row['priority']})
+        else:
+            raise ValueError("No 'priority' column found in the file.")
+    plot_df = pd.DataFrame(records)
+    # Set plot style
+    sns.set_style("whitegrid")
+    # Create count plot
+    plt.figure(figsize=(10, 6))
+    ax = sns.countplot(data=plot_df, x='Category', hue='Priority', palette='Set2')
+    # Add title and labels
+    plt.title('Defect Count by Category and Priority')
+    plt.xlabel('Defect Category')
+    plt.ylabel('Count')
+    plt.legend(title='Priority')
+    # Save plot
+    plt.tight_layout()
+    output_path = f"{os.path.splitext(excel_file)[0]}_priority_category_barplot.png"
+    plt.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    return output_path
 
 
 def generate_defect_type_category_bar_plot(excel_file):
@@ -284,41 +265,33 @@ def generate_defect_type_category_bar_plot(excel_file):
     Generate a bar plot showing the number of defects for defect types within each category.
     Each sheet is treated as a category. The function expects a categorized defect report Excel file.
     """
-
-    try:
-        # Read all sheets and concatenate into a single DataFrame with a 'Category' column
-        excel_data = pd.read_excel(excel_file, sheet_name=None)
-        records = []
-        for sheet_name, df in excel_data.items():
-            if df.empty:
-                continue
-            df = df.copy()
-            df.columns = [col.lower() for col in df.columns]
-            if 'custom field (category)' in df.columns:
-                for _, row in df.iterrows():
-                    records.append({'Category': sheet_name, 'DefectType': row['custom field (category)']})
-            else:
-                messagebox.showerror("Error", "No 'custom field (category)' column found in the file.")
-                return
-        plot_df = pd.DataFrame(records)
-        # Set plot style
-        sns.set(style="whitegrid")
-        # Create count plot
-        plt.figure(figsize=(10, 6))
-        ax = sns.countplot(data=plot_df, x='Category', hue='DefectType', palette='Set2')
-        # Add title and labels
-        plt.title('Defect Count by Category and Defect Type')
-        plt.xlabel('Defect Category')
-        plt.ylabel('Count')
-        plt.legend(title='Defect Type')
-        # Save plot
-        plt.tight_layout()
-        output_path = f"{os.path.splitext(excel_file)[0]}_defecttype_category_barplot.png"
-        plt.savefig(output_path, bbox_inches='tight', dpi=300)
-        plt.close()
-        messagebox.showinfo("Bar Plot Saved", f"Bar plot saved as:\n{output_path}")
-        os.startfile(output_path)
-        return True
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while generating the bar plot:\n{str(e)}")
-        return False
+    # Read all sheets and concatenate into a single DataFrame with a 'Category' column
+    excel_data = pd.read_excel(excel_file, sheet_name=None)
+    records = []
+    for sheet_name, df in excel_data.items():
+        if df.empty:
+            continue
+        df = df.copy()
+        df.columns = [col.lower() for col in df.columns]
+        if 'custom field (category)' in df.columns:
+            for _, row in df.iterrows():
+                records.append({'Category': sheet_name, 'DefectType': row['custom field (category)']})
+        else:
+            raise ValueError("No 'custom field (category)' column found in the file.")
+    plot_df = pd.DataFrame(records)
+    # Set plot style
+    sns.set(style="whitegrid")
+    # Create count plot
+    plt.figure(figsize=(10, 6))
+    ax = sns.countplot(data=plot_df, x='Category', hue='DefectType', palette='Set2')
+    # Add title and labels
+    plt.title('Defect Count by Category and Defect Type')
+    plt.xlabel('Defect Category')
+    plt.ylabel('Count')
+    plt.legend(title='Defect Type')
+    # Save plot
+    plt.tight_layout()
+    output_path = f"{os.path.splitext(excel_file)[0]}_defecttype_category_barplot.png"
+    plt.savefig(output_path, bbox_inches='tight', dpi=300)
+    plt.close()
+    return output_path

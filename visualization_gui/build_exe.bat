@@ -8,7 +8,7 @@ for /f "delims=" %%i in ('python -c "import ipadic, os; print(os.path.dirname(ip
 rmdir /s /q build dist __pycache__ >nul 2>&1
 del /q "%SCRIPT_NAME:.py=.spec%" >nul 2>&1
 
-:: Bundle the font manually
+:: Bundle the font and src files manually
 set "FONT_ADD=--add-data=%FONT_FILENAME%;src"
 set "IPADIC_ADD=--add-data=%IPADIC_BASE%\*;ipadic"
 set "SLOTHLIB_ADD=--add-data=src\slothlib.txt;src"

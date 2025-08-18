@@ -66,12 +66,12 @@ class VisualizationApp(tk.Tk):
         # Button groups with section headers
         sections = [
             ("Data Preparation", [
-                ("Filter Defect Reports", self.filter_defect_reports),
+                ("Filter Defect Report", self.filter_defect_reports),
                 ("Add Resolution Period", self.add_resolution_period_column)
             ]),
             ("Categorization", [
                 ("Build Categorization Model", self.build_model),
-                ("Categorize Defect Reports", self.categorize_defects)
+                ("Categorize Defect Report", self.categorize_defects)
             ]),
             ("Categorized Data Plots", [
                 ("Generate Category Pie Chart", self.generate_pie_chart),
@@ -141,7 +141,7 @@ class VisualizationApp(tk.Tk):
         # Excel Sheet Data section (scrollable)
         self.sheet_data_frame = ttk.LabelFrame(
             self.file_frame,
-            text="Excel Sheet Data (Top 100)",
+            text="Table Data (Top 100)",
             style="Card.TLabelframe"
         )
         self.sheet_data_frame.pack(fill="both", expand=True, padx=5, pady=(0, 5))
@@ -325,7 +325,7 @@ class VisualizationApp(tk.Tk):
             success, output_path = filter_defect_reports_dialog(self, file_path)
             if success:
                 self.status_bar.config(text="Defect report filtered successfully")
-                messagebox.showinfo("Filtered Results Saved", f"Filtered defect reports saved to:\n{output_path}")
+                messagebox.showinfo("Filtered Results Saved", f"Filtered defect report saved to:\n{output_path}")
                 os.startfile(output_path)
             else:
                 self.status_bar.config(text="Filtering canceled")
@@ -419,6 +419,7 @@ class VisualizationApp(tk.Tk):
                         return
                     
                     # Show save dialog after progress window is closed
+                    self.status_bar.config(text="Model trained successfully")
                     base_name = os.path.splitext(os.path.basename(file_path))[0]
                     default_model_name = f"{base_name}_classifier_model.pkl"
                     output_path = filedialog.asksaveasfilename(
@@ -511,7 +512,7 @@ class VisualizationApp(tk.Tk):
 
         def worker():
             try:
-                self.status_bar.config(text="Categorizing defect reports...")
+                self.status_bar.config(text="Categorizing defect report...")
                 from summary_classifier import categorize_summaries
                 
                 # Pass the cancel flag to the categorization function
@@ -531,7 +532,7 @@ class VisualizationApp(tk.Tk):
                     if isinstance(output_path, str):  # Success case - result is the output path
                         self.status_bar.config(text="Categorization completed successfully")
                         messagebox.showinfo("Categorization Complete", 
-                                           f"Categorized Excel file saved to:\n{output_path}", 
+                                           f"Categorized defect report saved to:\n{output_path}", 
                                            parent=self)
                         try:
                             os.startfile(output_path)
@@ -760,8 +761,8 @@ class VisualizationApp(tk.Tk):
 
             # Only show sheet selection if there are multiple sheets
             if len(sheet_names) > 1:
-                # Add 'All' option
-                option_names = ['All Categories'] + sheet_names
+                # Category options
+                option_names = sheet_names + ['All Categories']
 
                 # Remove previous OptionMenu if it exists
                 if self.sheet_menu:
@@ -770,8 +771,8 @@ class VisualizationApp(tk.Tk):
 
                 self.selected_sheet.set(option_names[0])
 
-                # Add sheet selection controls
-                ttk.Label(self.file_control_frame, text="Select sheet:").pack(side="left", padx=(10, 5))
+                # Add category selection controls
+                ttk.Label(self.file_control_frame, text="Select category:").pack(side="left", padx=(10, 5))
 
                 self.sheet_menu = tk.OptionMenu(
                     self.file_control_frame,
@@ -800,10 +801,11 @@ class VisualizationApp(tk.Tk):
                                 if "word" in df.columns and "count" in df.columns:
                                     all_dfs.append(df[["word", "count"]])
                             if all_dfs:
-                                # Sort each df by descending count before concat
-                                all_dfs = [df.sort_values('count', ascending=False) for df in all_dfs]
-                                self.df = pd.concat(all_dfs, ignore_index=True)
-                                self.df = self.df.sort_values('count', ascending=False).reset_index(drop=True)
+                                # Concatenate and combine duplicate words
+                                combined_df = pd.concat(all_dfs, ignore_index=True)
+                                combined_df = combined_df.groupby('word', as_index=False)['count'].sum()
+                                combined_df = combined_df.sort_values('count', ascending=False).reset_index(drop=True)
+                                self.df = combined_df
                                 self._missing_col_error_shown_per_sheet['All Categories'] = False
                             else:
                                 if not self._missing_col_error_shown_per_sheet.get('All Categories', False):

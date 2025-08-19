@@ -16,7 +16,7 @@ class VisualizationApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Defect Report Analysis Tool")
-        self.geometry("800x580")  # Reduced initial height for smaller screens
+        self.geometry("845x580")  # Reduced initial height for smaller screens
         self.configure(bg=secondary_color)
 
         # Create main container with scrollbar
@@ -103,9 +103,9 @@ class VisualizationApp(tk.Tk):
             ]),
             ("Categorized Data Plots", [
                 ("Generate Category Pie Chart", self.generate_pie_chart),
-                ("Generate Category Box Plot", self.generate_box_plot),
-                ("Priority-Category Bar Plot", self.generate_priority_category_bar_plot),
-                ("DefectType-Category Bar Plot", self.generate_defecttype_category_bar_plot)
+                ("Generate Resolution Period Box Plot", self.generate_box_plot),
+                ("Generate Priority Bar Plot", self.generate_priority_category_bar_plot),
+                ("Generate DefectType Bar Plot", self.generate_defecttype_category_bar_plot)
             ]),
             ("Text Analysis", [
                 ("Generate Word Count Table", self.generate_wordcount_table)
@@ -129,7 +129,7 @@ class VisualizationApp(tk.Tk):
                     text=btn_text, 
                     command=command, 
                     style="Action.TButton",
-                    width=25
+                    width=30
                 )
                 btn.pack(fill="x", pady=3)
 

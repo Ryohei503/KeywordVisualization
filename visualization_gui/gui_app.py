@@ -16,10 +16,35 @@ class VisualizationApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Defect Report Analysis Tool")
-        self.geometry("900x800")
+        self.geometry("800x580")  # Reduced initial height for smaller screens
         self.configure(bg=secondary_color)
 
-        # Status bar
+        # Create main container with scrollbar
+        self.main_container = ttk.Frame(self)
+        self.main_container.pack(fill="both", expand=True)
+
+        # Create a canvas for scrolling
+        self.canvas = tk.Canvas(self.main_container, bg=secondary_color)
+        self.scrollbar = ttk.Scrollbar(self.main_container, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        # Bind mouse wheel for scrolling
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Status bar (outside the scrollable area)
         self.status_bar = ttk.Label(
             self, 
             text="Ready", 
@@ -40,13 +65,16 @@ class VisualizationApp(tk.Tk):
         self.sheet_menu = None
         self.sheet_names_global = []
         
-        # Create main container
-        main_container = ttk.Frame(self, padding=frame_padding)
-        main_container.pack(fill="both", expand=True)
-        
+        # Create content in the scrollable frame
+        self.create_content(self.scrollable_frame)
+
+    def _on_mousewheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def create_content(self, parent):
         # Create left panel for analysis functions
         left_panel = ttk.LabelFrame(
-            main_container, 
+            parent, 
             text="Analysis Functions",
             padding=frame_padding,
             style="Card.TLabelframe"
@@ -55,7 +83,7 @@ class VisualizationApp(tk.Tk):
         
         # Create right panel for visualization tools
         self.right_panel = ttk.LabelFrame(
-            main_container, 
+            parent, 
             text="Keyword Visualization",
             padding=frame_padding,
             style="Card.TLabelframe"
@@ -162,9 +190,9 @@ class VisualizationApp(tk.Tk):
         self.sheet_data_canvas.bind_all("<MouseWheel>", lambda e: self.sheet_data_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
 
         vis_frame = ttk.LabelFrame(
-        self.right_panel, 
-        text="Visualization Options",
-        style="Card.TLabelframe"
+            self.right_panel, 
+            text="Visualization Options",
+            style="Card.TLabelframe"
         )
         vis_frame.pack(fill="both", expand=True, pady=(10, 0))
     

@@ -22,7 +22,7 @@ def categorize_summaries(input_excel, model_path=None, should_cancel=None):
             messagebox.showinfo("No Selection", "No model file selected for categorization.")
             return False
         pipeline = joblib.load(model_path)
-        st_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        st_model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
         
         predicted_categories = []
         for _, row in df.iterrows():

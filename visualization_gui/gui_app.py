@@ -16,16 +16,22 @@ class VisualizationApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Defect Report Analysis Tool")
-        self.geometry("845x580")  # Reduced initial height for smaller screens
+        self.geometry("860x580")  # Reduced initial height for smaller screens
         self.configure(bg=secondary_color)
 
-        # Create main container with scrollbar
+        # Create main container with scrollbars
         self.main_container = ttk.Frame(self)
         self.main_container.pack(fill="both", expand=True)
 
-        # Create a canvas for scrolling
+        # Create a canvas for scrolling with both horizontal and vertical scrollbars
         self.canvas = tk.Canvas(self.main_container, bg=secondary_color)
-        self.scrollbar = ttk.Scrollbar(self.main_container, orient="vertical", command=self.canvas.yview)
+        
+        # Vertical scrollbar
+        self.v_scrollbar = ttk.Scrollbar(self.main_container, orient="vertical", command=self.canvas.yview)
+        
+        # Horizontal scrollbar
+        self.h_scrollbar = ttk.Scrollbar(self.main_container, orient="horizontal", command=self.canvas.xview)
+        
         self.scrollable_frame = ttk.Frame(self.canvas)
 
         self.scrollable_frame.bind(
@@ -36,13 +42,20 @@ class VisualizationApp(tk.Tk):
         )
 
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
 
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
+        # Grid layout for canvas and scrollbars
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.v_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.h_scrollbar.grid(row=1, column=0, sticky="ew")
+        
+        # Configure grid weights
+        self.main_container.grid_rowconfigure(0, weight=1)
+        self.main_container.grid_columnconfigure(0, weight=1)
 
         # Bind mouse wheel for scrolling
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind_all("<Shift-MouseWheel>", self._on_shift_mousewheel)
 
         # Status bar (outside the scrollable area)
         self.status_bar = ttk.Label(
@@ -71,7 +84,13 @@ class VisualizationApp(tk.Tk):
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
+    def _on_shift_mousewheel(self, event):
+        self.canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+
     def create_content(self, parent):
+        # Set a minimum width for the content to ensure horizontal scrolling works properly
+        parent.config(width=1000)  # Wider than the initial window
+        
         # Create left panel for analysis functions
         left_panel = ttk.LabelFrame(
             parent, 
@@ -174,10 +193,12 @@ class VisualizationApp(tk.Tk):
         )
         self.sheet_data_frame.pack(fill="both", expand=True, padx=5, pady=(0, 5))
 
-        # Create canvas and scrollbar for sheet data
+        # Create canvas and scrollbar for sheet data (vertical only)
         self.sheet_data_canvas = tk.Canvas(self.sheet_data_frame, bg="white", highlightthickness=0)
         self.sheet_data_scrollbar = ttk.Scrollbar(self.sheet_data_frame, orient="vertical", command=self.sheet_data_canvas.yview)
         self.sheet_data_canvas.configure(yscrollcommand=self.sheet_data_scrollbar.set)
+        
+        # Pack canvas and scrollbar
         self.sheet_data_canvas.pack(side="left", fill="both", expand=True)
         self.sheet_data_scrollbar.pack(side="right", fill="y")
 
@@ -477,7 +498,7 @@ class VisualizationApp(tk.Tk):
                 
                 self.after(0, on_done)
             except Exception as e:
-                def show_error():
+                def show_error(e=e):
                     if progress_win.winfo_exists():
                         pb.stop()
                         progress_win.destroy()
@@ -571,7 +592,7 @@ class VisualizationApp(tk.Tk):
                 
                 self.after(0, on_done)
             except Exception as e:
-                def show_error():
+                def show_error(e=e):
                     if progress_win.winfo_exists():  # Check if window still exists
                         pb.stop()
                         progress_win.destroy()

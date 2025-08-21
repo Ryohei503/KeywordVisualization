@@ -35,7 +35,7 @@ def train_model(file_path, should_cancel=None):
         y = df['category']
 
         # Text embedding
-        model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
         X = model.encode(df['summary'].astype(str).tolist())
 
         if should_cancel and should_cancel():

@@ -41,20 +41,14 @@ def train_model(file_path, should_cancel=None):
         if should_cancel and should_cancel():
             return False, "Training canceled by user"
 
-        # Class weights
-        classes = np.unique(y)
-        weights = compute_class_weight('balanced', classes=classes, y=y)
-        class_weights = dict(zip(classes, weights))
-
         # Pipeline setup
         pipeline = Pipeline([
-            ('smote', SMOTE(random_state=42, k_neighbors=5)),
             ('clf', LogisticRegression(
-                class_weight=class_weights,
+                class_weight='balanced',
                 max_iter=1000,
-                solver='saga',
-                n_jobs=-1,
-                random_state=42
+                solver='lbfgs',
+                penalty='l2',
+                n_jobs=None
             ))
         ])
 
